@@ -1,0 +1,4 @@
+{
+  "presets": ["env","es2015","stage-0"],
+  "plugins": ["inline-import"]
+}

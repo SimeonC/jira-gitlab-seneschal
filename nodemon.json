@@ -1,0 +1,4 @@
+{
+  "watch": ["src/server/"],
+  "ext": "js,json,graphql"
+}
