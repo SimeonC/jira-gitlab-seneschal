@@ -1,0 +1,73 @@
+type JiraAvatarUrls {
+  size48: String
+  size24: String
+  size16: String
+  size32: String
+}
+
+type JiraAvatar {
+  id: String!
+  isSystemAvatar: Boolean
+  url: String!
+}
+
+type JiraProject {
+  id: String!
+  key: String!
+  name: String!
+  avatarUrls: JiraAvatarUrls
+}
+
+type JiraStatusCategory {
+  self: String!
+  id: Int
+  key: String!
+  colorName: String
+  name: String
+}
+
+type JiraStatus {
+  self: String!
+  id: String!
+  name: String!
+  description: String
+  iconUrl: String
+  subtask: Boolean
+  statusCategory: JiraStatusCategory
+}
+
+type JiraIssueType {
+  self: String!
+  id: String!
+  name: String!
+  iconUrl: String
+  subtask: Boolean
+  statuses: [JiraStatus!]
+}
+
+type JiraVersion {
+  id: String!
+  name: String!
+  description: String
+  released: Boolean
+}
+
+type JiraResolution {
+  id: String!
+  name: String!
+  description: String
+}
+
+type JiraPriority {
+  id: String!
+  name: String!
+  description: String
+  statusColor: String
+  iconUrl: String
+}
+
+type JiraComponent {
+  id: String!
+  name: String!
+  description: String
+}

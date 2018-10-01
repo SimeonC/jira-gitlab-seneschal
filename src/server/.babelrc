@@ -1,4 +1,4 @@
 {
-  "presets": ["env","es2015","stage-0"],
+  "presets": ["env","es2015","stage-0","flow-node"],
   "plugins": ["inline-import"]
 }

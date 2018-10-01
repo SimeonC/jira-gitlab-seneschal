@@ -1,0 +1,38 @@
+type WebhookTransitions {
+  mergeId: String
+  openId: String
+  closeId: String
+}
+
+type WebhookTransitionMap {
+  jiraProjectKey: String!
+  transitionStatusIds: WebhookTransitions!
+}
+
+type WebhookMetadata {
+  transitionKeywords: [String!]
+  transitionMap: [WebhookTransitionMap!]
+}
+
+type WebhookStatus {
+  id: String!
+  name: String!
+  url: String!
+  status: String!
+}
+
+input WebhookTransitionsInput {
+  openId: String
+  mergeId: String
+  closeId: String
+}
+
+input WebhookTransitionMapInput {
+  jiraProjectKey: String!
+  transitionStatusIds: WebhookTransitionsInput!
+}
+
+input WebhookMetadataInput {
+  transitionKeywords: [String!]!
+  transitionMap: [WebhookTransitionMapInput!]!
+}

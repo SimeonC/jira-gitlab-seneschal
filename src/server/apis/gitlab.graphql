@@ -1,0 +1,59 @@
+type GitlabProject {
+  id: Int!
+  name: String!
+  nameWithNamespace: String!
+  webUrl: String!
+  avatarUrl: String
+}
+
+type GitlabUser {
+  id: Int!
+  name: String!
+  username: String!
+  state: String!
+  avatar_url: String
+  web_url: String
+}
+
+type GitlabMilestone {
+  id: Int!
+  iid: Int!
+  project_id: Int!
+  title: String!
+  description: String!
+  state: String!
+  due_date: String
+  start_date: String
+  web_url: String!
+}
+
+type GitlabIssueTimeStats {
+  time_estimate: Int!
+  total_time_spent: Int!
+  human_time_estimate: String
+  human_total_time_spent: String
+}
+
+type GitlabIssue {
+  id: Int!
+  iid: Int!
+  project_id: Int!
+  title: String!
+  description: String!
+  state: String!
+  labels: [String!]
+  milestone: GitlabMilestone
+  assignees: [GitlabUser!]
+  assignee: GitlabUser
+  author: GitlabUser
+  closed_by: GitlabUser
+  upvotes: Int
+  downvotes: Int
+  user_notes_count: Int!
+  due_date: String
+  confidential: Boolean
+  discussion_locked: Boolean
+  web_url: String!
+  weight: Int
+  time_stats: GitlabIssueTimeStats
+}

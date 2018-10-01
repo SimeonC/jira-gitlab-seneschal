@@ -1,0 +1,95 @@
+type IdType {
+  id: String!
+}
+
+input IdInput {
+  id: String!
+}
+
+type MappingIssueType {
+  gitlabLabel: String
+  closedStatusId: String
+  issueTypeId: String
+}
+
+input MappingIssueTypeInput {
+  gitlabLabel: String
+  closedStatusId: String
+  issueTypeId: String
+}
+
+type MappingStatuses {
+  gitlabLabel: String
+  issueTypeId: String
+  statusId: String
+}
+
+input MappingStatusesInput {
+  gitlabLabel: String
+  issueTypeId: String
+  statusId: String
+}
+
+type MappingVersion {
+  milestoneId: String
+  versionId: String
+}
+
+input MappingVersionInput {
+  milestoneId: String
+  versionId: String
+}
+
+type MappingComponent {
+  gitlabLabel: String
+  componentId: String
+}
+
+input MappingComponentInput {
+  gitlabLabel: String
+  componentId: String
+}
+
+type MappingPriority {
+  gitlabLabel: String
+  priorityId: String
+}
+
+input MappingPriorityInput {
+  gitlabLabel: String
+  priorityId: String
+}
+
+type BaseValues {
+  project: IdType
+  components: [IdType!]
+}
+
+input BaseValuesInput {
+  project: IdInput!
+  components: [IdInput!]
+}
+
+input TransitionProjectMappingInput {
+  baseValues: BaseValuesInput
+  defaultIssueTypeId: String
+  defaultIssueTypeClosedStatusId: String
+  defaultResolutionId: String
+  issueTypes: [MappingIssueTypeInput!]
+  statuses: [MappingStatusesInput!]
+  priorities: [MappingPriorityInput!]
+  versions: [MappingVersionInput!]
+  components: [MappingComponentInput!]
+}
+
+type TransitionProjectMapping {
+  baseValues: BaseValues
+  defaultIssueTypeId: String
+  defaultIssueTypeClosedStatusId: String
+  defaultResolutionId: String
+  issueTypes: [MappingIssueType!]
+  statuses: [MappingStatuses!]
+  priorities: [MappingPriority!]
+  versions: [MappingVersion!]
+  components: [MappingComponent!]
+}

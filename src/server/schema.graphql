@@ -1,7 +1,75 @@
-type Query {
-  message: String
+#import ./apis/gitlab.graphql
+#import ./apis/jira.graphql
+#import ./apis/transitionProject.graphql
+#import ./apis/webhooks.graphql
+
+type LoadGitlabProject {
+  meta: GitlabProject!
+  issues: [GitlabIssue!]
+  labels: [String!]
+  milestones: [GitlabMilestone!]
+  users: [GitlabUser!]
+}
+
+type ProcessingProject {
+  projectId: String
+  gitlabProjectName: String
+  isProcessing: Boolean
+  completedCount: Int
+  totalCount: Int
+  currentMessage: String
+  currentIssueIid: String
+}
+
+type SuccessResponse {
+  success: Boolean
+}
+
+type Queries {
+  isSetup: SuccessResponse
+  jiraProjects: [JiraProject!]!
+  gitlabProjects: [GitlabProject!]!
+  processingProjects: [ProcessingProject]
+  projectMapping(gitlabProjectId: String!): TransitionProjectMapping
+  projectIssues(gitlabProjectId: String!): [GitlabIssue!]!
+  projectMeta(gitlabProjectId: String!): GitlabProject
+  projectLabels(gitlabProjectId: String!): [String!]!
+  projectMilestones(gitlabProjectId: String!): [GitlabMilestone!]!
+  projectUsers(gitlabProjectId: String!): [GitlabUser!]!
+  jiraIssueTypes(projectId: String!): [JiraIssueType!]!
+  jiraVersions(projectId: String!): [JiraVersion!]!
+  jiraComponents(projectId: String!): [JiraComponent!]!
+  jiraStatuses: [JiraStatus!]!
+  jiraResolutions: [JiraResolution!]!
+  jiraPriorities: [JiraPriority!]!
+  getWebhookMetadata: WebhookMetadata
+  webhooks: [WebhookStatus!]!
+}
+
+type Mutations {
+  setGitlabCredentials(appUrl: String!, token: String!): SuccessResponse
+  loadGitlabProject(projectId: String): LoadGitlabProject
+  setProjectMapping(
+    gitlabProjectId: String
+    mapping: TransitionProjectMappingInput
+  ): TransitionProjectMapping
+  setWebhookMetadata(metadata: WebhookMetadataInput): WebhookMetadata
+  createGitlabWebhooks(gitlabProjectId: String!): WebhookStatus
+  processProject(gitlabProjectId: String): SuccessResponse
+  createJiraVersionFromMilestone(
+    jiraProjectId: String!
+    gitlabProjectId: String!
+    milestoneId: String
+  ): SuccessResponse
+  migrateMilestones(
+    jiraProjectId: String!
+    gitlabProjectId: String!
+  ): TransitionProjectMapping
+  retryFailure(gitlabProjectId: String, issueIid: String): SuccessResponse
+  retryAllFailures: SuccessResponse
 }
 
 schema {
-  query: Query
+  query: Queries
+  mutation: Mutations
 }

@@ -3,6 +3,9 @@
 # dependencies
 /node_modules
 
+# data files
+/src/server/lowdb/*.json
+
 # testing
 /coverage
 
@@ -15,6 +18,7 @@
 .env.development.local
 .env.test.local
 .env.production.local
+credentials.json
 
 npm-debug.log*
 yarn-debug.log*

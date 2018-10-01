@@ -1,4 +1,5 @@
 {
   "watch": ["src/server/"],
-  "ext": "js,json,graphql"
+  "ext": "js,json,graphql",
+  "ignore": ["src/server/lowdb/*.json"]
 }

@@ -1,0 +1,51 @@
+{
+    "key": "gitlab-seneschal",
+    "name": "GitLab Seneschal",
+    "description": "Add on to help migrate from and maintain a GitLab/Jira setup",
+    "vendor": {
+        "name": "Simeon Cheeseman",
+        "url": "https://www.atlassian.com/angrynerds"
+    },
+    "baseUrl": "{{localBaseUrl}}",
+    "links": {
+        "self": "{{localBaseUrl}}/atlassian-connect.json",
+        "homepage": "{{localBaseUrl}}/atlassian-connect.json"
+    },
+    "authentication": {
+        "type": "jwt"
+    },
+    "apiVersion": 3,
+    "lifecycle": {
+        "installed": "/installed"
+    },
+    "scopes": [
+        "read",
+        "write",
+        "admin",
+        "project_admin"
+    ],
+    "modules": {
+        "webSections": [
+            {
+                "key": "gitlab-senechal",
+                "location": "admin_plugins_menu",
+                "name": {
+                    "value": "Gitlab Seneschal"
+                }
+            }
+        ],
+        "adminPages": [
+            {
+                "key": "gitlab-senechal-admin",
+                "location": "admin_plugins_menu/gitlab-senechal",
+                "name": {
+                    "value": "Gitlab Seneschal"
+                },
+                "url": "/admin"
+            }
+        ]
+    },
+    "apiMigrations": {
+        "gdpr": true
+    }
+}
