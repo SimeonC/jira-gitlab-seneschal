@@ -103,7 +103,7 @@
     "start:dev": "nodemon --exec babel-node -- src/server/index.js",
     "build:client": "node scripts/build.js",
     "build:server": "babel --config -d ./build/server ./src/server -s",
-    "build:build": "npm run build:client && npm run build:server",
+    "build": "npm run build:client && npm run build:server",
     "test": "node scripts/test.js --env=jsdom"
   },
   "homepage": "/admin",
