@@ -10,6 +10,7 @@ export default async function processWebhookComment(
   commentBody: *
 ): ?WebhookProcessResponseType {
   const { id, note, noteable_type: type } = commentBody.object_attributes;
+  // $FlowFixMe Async Promise/Object type conflict
   if (type !== 'MergeRequest') return null;
 
   const { issues, newText } = linkIssues(jiraProjectIds, baseUrl, note);
@@ -29,6 +30,6 @@ export default async function processWebhookComment(
       body: newText
     }
   );
-
+  // $FlowFixMe Async Promise/Object type conflict
   return metadata;
 }
