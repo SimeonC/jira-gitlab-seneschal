@@ -63,7 +63,6 @@ export default class Migrations extends Component {
   render() {
     return (
       <Page>
-        <Link to="/webhooks">Webhooks Management</Link>
         <GridColumn>
           <Grid>
             <Mutation
