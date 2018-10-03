@@ -120,7 +120,6 @@ class Webhooks extends Component<
   render() {
     return (
       <Page>
-        <Link to="/migrations">Migrations</Link>
         <GridColumn>
           <Grid>
             <Query query={webhooksQuery}>

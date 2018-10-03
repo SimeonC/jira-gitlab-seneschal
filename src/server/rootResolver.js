@@ -1,6 +1,8 @@
 // @flow
 import mapKeys from 'lodash/mapKeys';
 import camelCase from 'lodash/camelCase';
+import path from 'path';
+import { fork } from 'child_process';
 import gitlabApi from './apis/gitlab';
 import { jiraRequest } from './apis/jira';
 import { setCredential } from './apis/credentials';
@@ -9,12 +11,12 @@ import {
   getWebhookMetadata as coreGetWebhookMetadata,
   setWebhookMetadata as coreSetWebhookMetadata
 } from './apis/webhooks';
-import loadGitlabProjectIssues from './transition/loadIssues';
 import type { TransitionMappingType } from './transition/types';
 import transitionProjectApi from './apis/transitionProject';
 import {
   processQueue,
   projectStatuses,
+  projectStatus,
   reprocessAllFailures,
   reprocessFailure,
   startProcessingProject
@@ -32,19 +34,31 @@ type SuccessResponseType = {
   success: boolean
 };
 
-async function testGitlabCredentials(credentialPassword: string) {
+const loadGitlabProjectProcess = fork(
+  path.join(__dirname, './transition/loadIssues')
+);
+
+const cleanExit = (signal) => {
+  loadGitlabProjectProcess.kill(signal);
+  process.exit();
+};
+process.on('SIGINT', () => cleanExit('SIGINT')); // catch ctrl-c
+process.on('SIGUSR2', () => cleanExit('SIGUSR2')); // catch ctrl-c
+process.on('SIGTERM', () => cleanExit('SIGTERM')); // catch kill
+
+async function testGitlabCredentials(encryptionKey: string) {
   try {
-    await gitlabApi(credentialPassword).Users.current();
+    await gitlabApi(encryptionKey).Users.current();
     return true;
   } catch (err) {
     return false;
   }
 }
 
-export default function(credentialPassword: string, addon: *) {
+export default function(encryptionKey: string, addon: *) {
   async function isSetup() {
     return {
-      success: await testGitlabCredentials(credentialPassword)
+      success: await testGitlabCredentials(encryptionKey)
     };
   }
 
@@ -129,7 +143,7 @@ export default function(credentialPassword: string, addon: *) {
   }
 
   async function gitlabProjects() {
-    const projects = await gitlabApi(credentialPassword).Projects.all({
+    const projects = await gitlabApi(encryptionKey).Projects.all({
       membership: true,
       archived: false,
       simple: true
@@ -143,14 +157,24 @@ export default function(credentialPassword: string, addon: *) {
     root: *,
     { projectId }: { projectId: string }
   ) {
-    return await loadGitlabProjectIssues(
-      gitlabApi(credentialPassword),
+    loadGitlabProjectProcess.send({
+      encryptionKey,
       projectId
-    );
+    });
+    return {
+      success: true
+    };
   }
 
   function processingProjects() {
-    return projectStatuses();
+    return projectStatuses(encryptionKey);
+  }
+
+  function processingProject(
+    root: *,
+    { gitlabProjectId }: { gitlabProjectId: string }
+  ) {
+    return projectStatus(encryptionKey, gitlabProjectId);
   }
 
   function setProjectMapping(
@@ -163,7 +187,7 @@ export default function(credentialPassword: string, addon: *) {
       mapping: TransitionMappingType
     }
   ): TransitionMappingType {
-    const transitionApi = transitionProjectApi(gitlabProjectId);
+    const transitionApi = transitionProjectApi(encryptionKey, gitlabProjectId);
     transitionApi.set('mapping', mapping).write();
     return mapping;
   }
@@ -172,7 +196,7 @@ export default function(credentialPassword: string, addon: *) {
     root: *,
     { gitlabProjectId }: { gitlabProjectId: string }
   ): TransitionMappingType {
-    return transitionProjectApi(gitlabProjectId)
+    return transitionProjectApi(encryptionKey, gitlabProjectId)
       .get('mapping')
       .value();
   }
@@ -181,7 +205,7 @@ export default function(credentialPassword: string, addon: *) {
     root: *,
     { gitlabProjectId }: { gitlabProjectId: string }
   ): * {
-    return transitionProjectApi(gitlabProjectId)
+    return transitionProjectApi(encryptionKey, gitlabProjectId)
       .get('labels')
       .value();
   }
@@ -190,7 +214,7 @@ export default function(credentialPassword: string, addon: *) {
     root: *,
     { gitlabProjectId }: { gitlabProjectId: string }
   ): * {
-    return transitionProjectApi(gitlabProjectId)
+    return transitionProjectApi(encryptionKey, gitlabProjectId)
       .get('users')
       .value();
   }
@@ -199,7 +223,7 @@ export default function(credentialPassword: string, addon: *) {
     root: *,
     { gitlabProjectId }: { gitlabProjectId: string }
   ): * {
-    return transitionProjectApi(gitlabProjectId)
+    return transitionProjectApi(encryptionKey, gitlabProjectId)
       .get('milestones')
       .value();
   }
@@ -208,7 +232,7 @@ export default function(credentialPassword: string, addon: *) {
     root: *,
     { gitlabProjectId }: { gitlabProjectId: string }
   ): * {
-    return transitionProjectApi(gitlabProjectId)
+    return transitionProjectApi(encryptionKey, gitlabProjectId)
       .get('issues')
       .value();
   }
@@ -217,7 +241,7 @@ export default function(credentialPassword: string, addon: *) {
     root: *,
     { gitlabProjectId }: { gitlabProjectId: string }
   ): * {
-    return transitionProjectApi(gitlabProjectId)
+    return transitionProjectApi(encryptionKey, gitlabProjectId)
       .get('meta')
       .value();
   }
@@ -231,6 +255,7 @@ export default function(credentialPassword: string, addon: *) {
     req: *
   ): TransitionMappingType {
     return createVersionsFromMilestones(
+      encryptionKey,
       addon.httpClient(req),
       jiraProjectId,
       gitlabProjectId
@@ -249,6 +274,7 @@ export default function(credentialPassword: string, addon: *) {
     // $FlowFixMe
     return {
       success: createVersionFromMilestone(
+        encryptionKey,
         addon.httpClient(req),
         jiraProjectId,
         gitlabProjectId,
@@ -262,9 +288,9 @@ export default function(credentialPassword: string, addon: *) {
     { appUrl, token }: { appUrl: string, token: string }
   ) {
     try {
-      setCredential(credentialPassword, 'gitlab', { appUrl, token });
+      setCredential(encryptionKey, 'gitlab', { appUrl, token });
       return {
-        success: testGitlabCredentials(credentialPassword)
+        success: testGitlabCredentials(encryptionKey)
       };
     } catch (error) {
       console.error(error);
@@ -280,8 +306,8 @@ export default function(credentialPassword: string, addon: *) {
     req: *
   ): SuccessResponseType {
     startProcessingProject(
+      encryptionKey,
       addon,
-      credentialPassword,
       req.context.clientKey,
       gitlabProjectId
     );
@@ -294,17 +320,17 @@ export default function(credentialPassword: string, addon: *) {
     root: *,
     { gitlabProjectId, issueIid }: { gitlabProjectId: string, issueIid: string }
   ): SuccessResponseType {
-    reprocessFailure(addon, credentialPassword, issueIid, gitlabProjectId);
+    reprocessFailure(encryptionKey, addon, issueIid, gitlabProjectId);
     return { success: true };
   }
 
   function retryAllFailures(): SuccessResponseType {
-    reprocessAllFailures(addon, credentialPassword);
+    reprocessAllFailures(encryptionKey, addon);
     return { success: true };
   }
 
   function getWebhookMetadata(root: *, params: *, req: *): WebhookMetadataType {
-    return coreGetWebhookMetadata(req.context.clientKey, true);
+    return coreGetWebhookMetadata(encryptionKey, req.context.clientKey, true);
   }
 
   function setWebhookMetadata(
@@ -312,7 +338,7 @@ export default function(credentialPassword: string, addon: *) {
     { metadata }: { metadata: WebhookMetadataType },
     req: *
   ): WebhookMetadataType {
-    coreSetWebhookMetadata(req.context.clientKey, metadata);
+    coreSetWebhookMetadata(encryptionKey, req.context.clientKey, metadata);
     return metadata;
   }
 
@@ -322,7 +348,7 @@ export default function(credentialPassword: string, addon: *) {
     req: *
   ): WebhookProjectStatusType {
     return createWebhooks(
-      credentialPassword,
+      encryptionKey,
       gitlabProjectId,
       req.protocol + '://' + req.get('host'),
       req.context.clientKey
@@ -330,10 +356,10 @@ export default function(credentialPassword: string, addon: *) {
   }
 
   function webhooks(): WebhookProjectStatusType[] {
-    return allProjects();
+    return allProjects(encryptionKey);
   }
 
-  processQueue(addon, credentialPassword);
+  processQueue(encryptionKey, addon);
 
   // bind all these functions to pass in the addon/jira api
   return {

@@ -4,7 +4,7 @@
     "description": "Add on to help migrate from and maintain a GitLab/Jira setup",
     "vendor": {
         "name": "Simeon Cheeseman",
-        "url": "https://www.atlassian.com/angrynerds"
+        "url": "https://github.com/SimeonC/jira-gitlab-seneschal"
     },
     "baseUrl": "{{localBaseUrl}}",
     "links": {
@@ -36,12 +36,20 @@
         ],
         "adminPages": [
             {
-                "key": "gitlab-senechal-admin",
+                "key": "gitlab-senechal-migrations",
                 "location": "admin_plugins_menu/gitlab-senechal",
                 "name": {
-                    "value": "Gitlab Seneschal"
+                    "value": "Migrations"
                 },
-                "url": "/admin"
+                "url": "/admin?route=migrations"
+            },
+            {
+                "key": "gitlab-senechal-webhooks",
+                "location": "admin_plugins_menu/gitlab-senechal",
+                "name": {
+                    "value": "Webhooks"
+                },
+                "url": "/admin?route=webhooks"
             }
         ]
     },

@@ -72,6 +72,7 @@
     "morgan": "1.9.1",
     "nodemon": "1.18.4",
     "object-assign": "4.1.1",
+    "pg": "^7.4.3",
     "postcss-flexbugs-fixes": "3.2.0",
     "postcss-loader": "2.0.8",
     "promise": "8.0.1",
@@ -98,8 +99,11 @@
     "whatwg-fetch": "2.0.3"
   },
   "scripts": {
+    "start": "node build/server/index.js",
     "start:dev": "nodemon --exec babel-node -- src/server/index.js",
-    "build": "node scripts/build.js",
+    "build:client": "node scripts/build.js",
+    "build:server": "babel --config -d ./build/server ./src/server -s",
+    "build:build": "npm run build:client && npm run build:server",
     "test": "node scripts/test.js --env=jsdom"
   },
   "homepage": "/admin",

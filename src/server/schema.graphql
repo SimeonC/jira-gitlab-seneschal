@@ -15,6 +15,7 @@ type ProcessingProject {
   projectId: String
   gitlabProjectName: String
   isProcessing: Boolean
+  isLoading: Boolean
   completedCount: Int
   totalCount: Int
   currentMessage: String
@@ -30,6 +31,7 @@ type Queries {
   jiraProjects: [JiraProject!]!
   gitlabProjects: [GitlabProject!]!
   processingProjects: [ProcessingProject]
+  processingProject(gitlabProjectId: String!): ProcessingProject
   projectMapping(gitlabProjectId: String!): TransitionProjectMapping
   projectIssues(gitlabProjectId: String!): [GitlabIssue!]!
   projectMeta(gitlabProjectId: String!): GitlabProject
@@ -48,7 +50,7 @@ type Queries {
 
 type Mutations {
   setGitlabCredentials(appUrl: String!, token: String!): SuccessResponse
-  loadGitlabProject(projectId: String): LoadGitlabProject
+  loadGitlabProject(projectId: String): SuccessResponse
   setProjectMapping(
     gitlabProjectId: String
     mapping: TransitionProjectMappingInput

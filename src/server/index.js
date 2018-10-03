@@ -33,11 +33,12 @@ const schemas = [
 ];
 
 // Password Must be 256 bytes (32 characters)
-const credentialPassword = require('../../config.json').credentialDbKey;
 
 const app = express();
 
 const addon = ac(app);
+
+const encryptionKey = addon.config.lowdbEncryptionKey();
 
 const port = addon.config.port();
 const devEnv = app.get('env') === 'development';
@@ -58,6 +59,24 @@ app.use(compression());
 // You need to instantiate the `atlassian-connect-express` middleware in order to get its goodness for free
 app.use(addon.middleware());
 
+function sendFrontendAdminPage(req, res, htmlFileContent) {
+  let htmlContent = htmlFileContent;
+  htmlContent = htmlContent.replace(
+    /<\/head>/gi,
+    `<meta name="token" content="${
+      req.context.token
+    }"><meta name="route" content="${req.query.route}"></head>`
+  );
+  htmlContent = htmlContent.replace(
+    /<\/body>/gi,
+    `<script src="${
+      req.context.hostBaseUrl
+    }/atlassian-connect/all.js"></script></body>`
+  );
+  res.set('Content-Type', 'text/html');
+  res.send(htmlContent);
+}
+
 if (devEnv) {
   const {
     createCompiler,
@@ -74,44 +93,26 @@ if (devEnv) {
   const devMiddleware = middleware(compiler, {
     publicPath: '/admin'
   });
-  app.get('/admin', addon.authenticate(), (req, res) => {
-    res.set('Content-Type', 'text/html');
+  function serveFrontendRequest(req, res) {
     const htmlFile = devMiddleware.fileSystem.readFileSync(
       config.output.path + '/index.html'
     );
-    let htmlContent = htmlFile.toString();
-    htmlContent = htmlContent.replace(
-      /<\/head>/gi,
-      `<meta name="token" content="${req.context.token}"></head>`
-    );
-    htmlContent = htmlContent.replace(
-      /<\/body>/gi,
-      `<script src="${
-        req.context.hostBaseUrl
-      }/atlassian-connect/all.js"></script></body>`
-    );
-    res.send(htmlContent);
-  });
+    sendFrontendAdminPage(req, res, htmlFile.toString());
+  }
+  app.get('/admin', addon.authenticate(), serveFrontendRequest);
   app.use(devMiddleware);
   app.use(hotware(compiler));
 } else {
   // Enable static resource fingerprinting for far future expires caching in production
   app.use(express.static(path.join(__dirname, '../../build/client')));
 
-  app.get('/admin', addon.authenticate(), (req, res) => {
-    let htmlContent = reactIndexFile.toString();
-    htmlContent = htmlContent.replace(
-      /<\/head>/gi,
-      `<meta name="token" content="${req.context.token}"></head>`
-    );
-    htmlContent = htmlContent.replace(
-      /<\/body>/gi,
-      `<script src="${
-        req.context.hostBaseUrl
-      }/atlassian-connect/all.js"></script></body>`
-    );
-    res.send(htmlContent);
-  });
+  const htmlContent = reactIndexFile.toString();
+
+  function serveFrontendRequest(req, res) {
+    sendFrontendAdminPage(req, res, htmlContent);
+  }
+
+  app.get('/admin', addon.authenticate(), serveFrontendRequest);
 }
 
 // Show nicer errors when in dev mode
@@ -125,17 +126,17 @@ app.use(
   expressGraphql({
     schema: makeExecutableSchema({
       typeDefs: schemas,
-      resolvers: root(credentialPassword, addon)
+      resolvers: root(encryptionKey, addon)
     }),
     graphiql: true
   })
 );
 
-webhooksSetup(credentialPassword, addon, app);
+webhooksSetup(encryptionKey, addon, app);
 
 // Root route. This route will serve the `atlassian-connect.json` unless the
 // documentation url inside `atlassian-connect.json` is set
-app.get('/', function(req, res) {
+app.get('/', (req, res) => {
   res.format({
     // If the request content-type is text-html, it will decide which to serve up
     'text/html': function() {
@@ -147,6 +148,12 @@ app.get('/', function(req, res) {
       res.redirect('/atlassian-connect.json');
     }
   });
+});
+
+// Health Endpoint for load monitoring tools
+app.get('/health', (req, res) => {
+  res.status(200);
+  res.send('ok');
 });
 
 // Boot the damn thing

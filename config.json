@@ -50,7 +50,9 @@
             "adapter": "sequelize",
             "dialect": "sqlite",
             "storage": ":memory:"
-        }
+        },
+        // key Must be 256 bytes (32 characters)
+        "lowdbEncryptionKey": "put-your-key-here-thats-32-chars"
     },
     // This is the production add-on configuration, which is enabled by setting
     // the NODE_ENV=production environment variable.
@@ -62,7 +64,7 @@
         //Use 'unauthorized.hbs' template for displaying an error page
         "errorTemplate": true,
         // This is the public URL to your production add-on.
-        "localBaseUrl": "https://your-subdomain.herokuapp.com",
+        "localBaseUrl": "$APP_URL",
         "store": {
             // You won't want to use the memory store in production, or your install
             // registrations will be forgotten any time your app restarts.  Here
@@ -73,15 +75,13 @@
             // URL to you through the environment, so we tell atlassian-connect-express to use that value.
             "url": "$DATABASE_URL"
         },
-        // Make sure that your add-on can only be registered by the hosts on
-        // these domains.
+        // As this is not designed to be multitenanted - make the env var point to _your_
+        // Jira instance(s). Can take wildcards like *.atlassian.net
         "whitelist": [
-            "*.jira-dev.com",
-            "*.atlassian.net",
-            "*.atlassian.com",
-            "*.jira.com"
-        ]
+            "$JIRA_HOST_URL"
+        ],
+        // key Must be 256 bytes (32 characters)
+        "lowdbEncryptionKey": "$LOWDB_CREDENTIAL_KEY"
     },
-    "product": "jira",
-    "credentialDbKey": "your-key-here"
+    "product": "jira"
 }

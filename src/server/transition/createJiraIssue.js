@@ -3,6 +3,7 @@ import filter from 'lodash/filter';
 import kebabCase from 'lodash/kebabCase';
 import uniqueBy from 'lodash/uniqBy';
 import markdownTransform from './markdownTransform';
+import GitlabApi from '../apis/gitlab';
 import type {
   TransitionMappingComponentType,
   TransitionMappingIssueTypeType,
@@ -12,7 +13,6 @@ import type {
 } from './types';
 import { jiraRequest } from '../apis/jira';
 import transitionProjectApi from '../apis/transitionProject';
-import startCase from 'lodash/startCase';
 
 function transformLabels(labels: string[]) {
   return labels.map((label) => {
@@ -22,13 +22,17 @@ function transformLabels(labels: string[]) {
 }
 
 export default async function createJiraIssue(
+  encryptionKey: string,
   jiraApi: *,
-  gitlabApi: *,
   gitlabProjectId: string,
   gitlabIssueIid: string,
   logger: (message: string) => void
 ) {
-  const transitionProjectDb = transitionProjectApi(gitlabProjectId);
+  const gitlabApi = GitlabApi(encryptionKey);
+  const transitionProjectDb = transitionProjectApi(
+    encryptionKey,
+    gitlabProjectId
+  );
 
   const mapping: TransitionMappingType = transitionProjectDb
     .get('mapping')

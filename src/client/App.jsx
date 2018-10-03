@@ -3,7 +3,7 @@ import '@atlaskit/css-reset';
 import styled from 'styled-components';
 import client from './graphqlClient';
 import { ApolloProvider } from 'react-apollo';
-import { BrowserRouter, Route, Switch, Redirect } from 'react-router-dom';
+import { HashRouter, Route, Switch, Redirect } from 'react-router-dom';
 
 import Authenticate from './Authenticate';
 import Migrations from './Migrations';
@@ -22,13 +22,17 @@ const AppStyles = styled.div`
   min-height: 800px;
 `;
 
+let defaultRoute = document
+  .querySelector('meta[name=route]')
+  .getAttribute('content');
+
 export default class App extends Component {
   render() {
     return (
       <AppStyles>
         <ApolloProvider client={client}>
           <Authenticate>
-            <BrowserRouter>
+            <HashRouter>
               <Switch>
                 <Route
                   path="/project/:gitlabProjectId"
@@ -36,9 +40,9 @@ export default class App extends Component {
                 />
                 <Route path="/webhooks" component={Webhooks} />
                 <Route path="/migrations" component={Migrations} />
-                <Route render={() => <Redirect to="/migrations" />} />
+                <Route render={() => <Redirect to={defaultRoute} />} />
               </Switch>
-            </BrowserRouter>
+            </HashRouter>
           </Authenticate>
         </ApolloProvider>
       </AppStyles>
