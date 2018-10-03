@@ -136,7 +136,7 @@ webhooksSetup(encryptionKey, addon, app);
 
 // Root route. This route will serve the `atlassian-connect.json` unless the
 // documentation url inside `atlassian-connect.json` is set
-app.get('/', function(req, res) {
+app.get('/', (req, res) => {
   res.format({
     // If the request content-type is text-html, it will decide which to serve up
     'text/html': function() {
@@ -148,6 +148,12 @@ app.get('/', function(req, res) {
       res.redirect('/atlassian-connect.json');
     }
   });
+});
+
+// Health Endpoint for load monitoring tools
+app.get('/health', (req, res) => {
+  res.status(200);
+  res.send('ok');
 });
 
 // Boot the damn thing
