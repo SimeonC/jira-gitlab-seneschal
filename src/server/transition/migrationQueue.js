@@ -2,7 +2,6 @@
 import lowdb from '../lowdb';
 import createJiraIssue from './createJiraIssue';
 import transitionProjectApi from '../apis/transitionProject';
-import gitlabApi from '../apis/gitlab';
 import { getCredential, setCredential } from '../apis/credentials';
 
 type QueueElement = {
@@ -20,12 +19,16 @@ type ProcessingProject = {
   currentIssueIid: string
 };
 
-function loadQueueDb() {
-  return lowdb('migrationQueue', {
-    queue: [],
-    failures: [],
-    processingProjects: {}
-  });
+function loadQueueDb(encryptionKey: string) {
+  return lowdb(
+    'migrationQueue',
+    {
+      queue: [],
+      failures: [],
+      processingProjects: {}
+    },
+    encryptionKey
+  );
 }
 
 const JIRA_GITLAB_PROJECT_KEY = 'jira-client-key-for-gitlab-project';
@@ -33,12 +36,12 @@ const JIRA_GITLAB_PROJECT_KEY = 'jira-client-key-for-gitlab-project';
 let queueIsProcessing = false;
 
 export function reprocessFailure(
+  encryptionKey: string,
   jiraAddon: *,
-  credentialsPassword: string,
   issueIid: string,
   projectId: string
 ) {
-  const queueDb = loadQueueDb();
+  const queueDb = loadQueueDb(encryptionKey);
   const failures = queueDb.get('failures').value();
   const reprocessedFailure = failures.find(
     ({ queueElement }) =>
@@ -51,27 +54,26 @@ export function reprocessFailure(
     .get('queue')
     .push(reprocessedFailure.queueElement)
     .write();
-  if (!queueIsProcessing) processQueue(jiraAddon, credentialsPassword);
+  if (!queueIsProcessing) processQueue(encryptionKey, jiraAddon);
 }
 
-export function reprocessAllFailures(
-  jiraAddon: *,
-  credentialsPassword: string
-) {
-  const queueDb = loadQueueDb();
+export function reprocessAllFailures(encryptionKey: string, jiraAddon: *) {
+  const queueDb = loadQueueDb(encryptionKey);
   const failures = queueDb.get('failures').value();
   queueDb.set('failures', []).write();
   queueDb
     .get('queue')
     .push(...failures.map(({ queueElement }) => queueElement))
     .write();
-  if (!queueIsProcessing) processQueue(jiraAddon, credentialsPassword);
+  if (!queueIsProcessing) processQueue(encryptionKey, jiraAddon);
 }
 
-export function projectStatuses(): (ProcessingProject & {
+export function projectStatuses(
+  encryptionKey: string
+): (ProcessingProject & {
   projectId: string
 })[] {
-  const queueDb = loadQueueDb();
+  const queueDb = loadQueueDb(encryptionKey);
   const projects = queueDb.get('processingProjects').value();
   return Object.keys(projects).map((projectId) => ({
     ...projects[projectId],
@@ -80,19 +82,17 @@ export function projectStatuses(): (ProcessingProject & {
 }
 
 export async function startProcessingProject(
+  encryptionKey: string,
   jiraAddon: *,
-  credentialsPassword: string,
   clientKey: string,
   projectId: string
 ) {
-  const queueDb = loadQueueDb();
-  const projectDb = transitionProjectApi(projectId);
+  const queueDb = loadQueueDb(encryptionKey);
+  const projectDb = transitionProjectApi(encryptionKey, projectId);
   projectDb.set('isProcessing', true).write();
-  setCredential(
-    credentialsPassword,
-    `${JIRA_GITLAB_PROJECT_KEY}-${projectId}`,
-    { clientKey }
-  );
+  setCredential(encryptionKey, `${JIRA_GITLAB_PROJECT_KEY}-${projectId}`, {
+    clientKey
+  });
   const issues = projectDb.get('issues').value();
   issues.forEach((issue) => {
     queueDb
@@ -106,6 +106,7 @@ export async function startProcessingProject(
   queueDb
     .set(`processingProjects.${projectId}`, {
       projectId,
+      isLoading: false,
       isProcessing: true,
       completedCount: 0,
       totalCount: issues.length,
@@ -114,24 +115,20 @@ export async function startProcessingProject(
     })
     .write();
   if (!queueIsProcessing) {
-    return processQueue(jiraAddon, credentialsPassword);
+    return processQueue(encryptionKey, jiraAddon);
   }
 }
 
-function initJiraApi(
-  addon: *,
-  credentialPassword: string,
-  gitlabProjectId: string
-) {
+function initJiraApi(encryptionKey: string, addon: *, gitlabProjectId: string) {
   const jiraCredentials = getCredential(
-    credentialPassword,
+    encryptionKey,
     `${JIRA_GITLAB_PROJECT_KEY}-${gitlabProjectId}`
   );
   return addon.httpClient(jiraCredentials);
 }
 
-export async function processQueue(jiraAddon: *, credentialPassword: string) {
-  const queueDb = loadQueueDb();
+export async function processQueue(encryptionKey: string, jiraAddon: *) {
+  const queueDb = loadQueueDb(encryptionKey);
   const queue = queueDb.get('queue').value();
   if (queue.length === 0) {
     queueIsProcessing = false;
@@ -141,11 +138,7 @@ export async function processQueue(jiraAddon: *, credentialPassword: string) {
   const queueElement: QueueElement = queue.shift();
   queueDb.set('queue', queue).write();
 
-  const jiraApi = initJiraApi(
-    jiraAddon,
-    credentialPassword,
-    queueElement.projectId
-  );
+  const jiraApi = initJiraApi(encryptionKey, jiraAddon, queueElement.projectId);
 
   queueDb
     .set(
@@ -155,8 +148,8 @@ export async function processQueue(jiraAddon: *, credentialPassword: string) {
     .write();
   try {
     await createJiraIssue(
+      encryptionKey,
       jiraApi,
-      gitlabApi(credentialPassword),
       queueElement.projectId,
       queueElement.issueIid,
       (message) => {
@@ -194,5 +187,5 @@ export async function processQueue(jiraAddon: *, credentialPassword: string) {
       .write();
   }
 
-  return processQueue(jiraAddon, credentialPassword);
+  return processQueue(encryptionKey, jiraAddon);
 }

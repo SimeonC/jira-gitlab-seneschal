@@ -22,6 +22,7 @@ async function createVersion(
     startDate: milestone.start_date,
     releaseDate: milestone.due_date
   });
+  // $FlowFixMe Async Promise/Object type conflict
   return {
     milestoneId: milestone.id,
     versionId: jiraVersion.id
@@ -29,12 +30,16 @@ async function createVersion(
 }
 
 export async function createVersionFromMilestone(
+  encryptionKey: string,
   jiraApi: *,
   jiraProjectId: string,
   gitlabProjectId: string,
   milestoneId: string
 ): boolean {
-  const transitionProjectDb = transitionProjectApi(gitlabProjectId);
+  const transitionProjectDb = transitionProjectApi(
+    encryptionKey,
+    gitlabProjectId
+  );
   const milestone = transitionProjectDb
     .get('milestones')
     .find({ id: milestoneId })
@@ -49,15 +54,20 @@ export async function createVersionFromMilestone(
     .get('mapping.versions')
     .push(newVersion)
     .write();
+  // $FlowFixMe Async Promise/Object type conflict
   return true;
 }
 
 export default async function createVersionsFromMilestones(
+  encryptionKey: string,
   jiraApi: *,
   jiraProjectId: string,
   gitlabProjectId: string
 ): TransitionMappingType {
-  const transitionProjectDb = transitionProjectApi(gitlabProjectId);
+  const transitionProjectDb = transitionProjectApi(
+    encryptionKey,
+    gitlabProjectId
+  );
 
   const mapping: TransitionMappingType = transitionProjectDb
     .get('mapping')
@@ -102,5 +112,6 @@ export default async function createVersionsFromMilestones(
     .push(...newVersions)
     .write();
 
+  // $FlowFixMe Async Promise/Object type conflict
   return transitionProjectDb.get('mapping').value();
 }

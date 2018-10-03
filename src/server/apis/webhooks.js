@@ -1,6 +1,5 @@
 // @flow
 import sortedIndexBy from 'lodash/sortedIndexBy';
-import lowdbEncrypted from '../lowdb/encrypted';
 import lowdb from '../lowdb';
 
 export const WEBHOOK_TYPES = {
@@ -48,41 +47,46 @@ export type WebhookProjectStatusType = {
   status: WebhookProjectStatusEnumType
 };
 
-function loadDb(password: string) {
-  return lowdbEncrypted('webhooks', { hooks: {} }, password);
+function loadDb(encryptionKey: string) {
+  return lowdb('webhooks', { hooks: {} }, encryptionKey);
 }
 
-function loadStatusDb() {
-  return lowdb('webhooksStatus', { projects: [] });
+function loadStatusDb(encryptionKey: string) {
+  return lowdb('webhooksStatus', { projects: [] }, encryptionKey);
 }
 
-function loadMetadataDb() {
-  return lowdb('webhooksMetadata', {
-    __default: {
-      transitionKeywords: [
-        'fix',
-        'fixes',
-        'fixed',
-        'close',
-        'closes',
-        'closed',
-        'complete',
-        'completes',
-        'completed',
-        'resolve',
-        'resolves',
-        'resolved'
-      ],
-      transitionMap: []
-    }
-  });
+function loadMetadataDb(encryptionKey: string) {
+  return lowdb(
+    'webhooksMetadata',
+    {
+      __default: {
+        transitionKeywords: [
+          'fix',
+          'fixes',
+          'fixed',
+          'close',
+          'closes',
+          'closed',
+          'complete',
+          'completes',
+          'completed',
+          'resolve',
+          'resolves',
+          'resolved'
+        ],
+        transitionMap: []
+      }
+    },
+    encryptionKey
+  );
 }
 
 export function getWebhookMetadata(
+  encryptionKey: string,
   clientKey: string,
   force: boolean = false
 ): WebhookMetadataType {
-  const db = loadMetadataDb();
+  const db = loadMetadataDb(encryptionKey);
   const clientValue = db.get(clientKey).value();
   if (!clientValue && !force) {
     throw new Error('Webhook has not been setup for this clientKey');
@@ -95,20 +99,22 @@ export function getWebhookMetadata(
 }
 
 export function setWebhookMetadata(
+  encryptionKey: string,
   clientKey: string,
   metadata: WebhookMetadataType
 ) {
-  loadMetadataDb()
+  loadMetadataDb(encryptionKey)
     .set(clientKey, metadata)
     .write();
 }
 
 export function registerProject(
+  encryptionKey: string,
   projectId: string,
   projectName: string,
   projectUrl: string
 ) {
-  updateProject(projectId, {
+  updateProject(encryptionKey, projectId, {
     name: projectName,
     url: projectUrl,
     status: 'pending'
@@ -116,10 +122,11 @@ export function registerProject(
 }
 
 export function updateProject(
+  encryptionKey: string,
   projectId: string,
   props: { name?: string, url?: string, status?: WebhookProjectStatusEnumType }
 ) {
-  const db = loadStatusDb();
+  const db = loadStatusDb(encryptionKey);
   const current = db.get('projects').value();
   const newProject: WebhookProjectStatusType = {
     id: `${projectId}`,
@@ -140,18 +147,18 @@ export function updateProject(
   return true;
 }
 
-export function allProjects(): WebhookProjectStatusType[] {
-  return loadStatusDb()
+export function allProjects(encryptionKey: string): WebhookProjectStatusType[] {
+  return loadStatusDb(encryptionKey)
     .get('projects')
     .value();
 }
 
 export function getWebhookClientKey(
-  password: string,
+  encryptionKey: string,
   key: string,
   secretKey: string
 ) {
-  const credential: WebhookCredentialType = loadDb(password)
+  const credential: WebhookCredentialType = loadDb(encryptionKey)
     .get(`hooks.${key}`)
     .value();
   if (credential.secretKey === secretKey) {
@@ -161,12 +168,12 @@ export function getWebhookClientKey(
 }
 
 export function isValidSecretKey(
-  password: string,
+  encryptionKey: string,
   key: string,
   secretKey: string
 ) {
   try {
-    getWebhookClientKey(password, key, secretKey);
+    getWebhookClientKey(encryptionKey, key, secretKey);
     return true;
   } catch (error) {
     return false;
@@ -174,12 +181,12 @@ export function isValidSecretKey(
 }
 
 export function setWebhookClientKey(
-  password: string,
+  encryptionKey: string,
   key: string,
   secretKey: string,
   clientKey: string
 ) {
-  loadDb(password)
+  loadDb(encryptionKey)
     .set(`hooks.${key}`, { secretKey, clientKey })
     .write();
 }

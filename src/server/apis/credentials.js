@@ -1,5 +1,5 @@
 // @flow
-import lowdb from '../lowdb/encrypted';
+import lowdb from '../lowdb';
 
 export type GitlabCredential = {
   appUrl: string,
@@ -10,25 +10,25 @@ export type JiraCredential = {
   clientKey: string
 };
 
-function loadDb(password: string) {
-  return lowdb('credentials', { jira: {}, gitlab: {} }, password);
+function loadDb(encryptionKey: string) {
+  return lowdb('credentials', { jira: {}, gitlab: {} }, encryptionKey);
 }
 
 export function setCredential(
-  password: string,
+  encryptionKey: string,
   key: 'gitlab' | string,
   credential: GitlabCredential | JiraCredential
 ) {
-  loadDb(password)
+  loadDb(encryptionKey)
     .set(key, credential)
     .write();
 }
 
 export function getCredential(
-  password: string,
+  encryptionKey: string,
   key: 'gitlab' | string
 ): GitlabCredential | JiraCredential {
-  return loadDb(password)
+  return loadDb(encryptionKey)
     .get(key)
     .value();
 }

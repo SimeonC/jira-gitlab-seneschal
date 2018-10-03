@@ -32,28 +32,91 @@ type FailureElement = {
   error: any
 };
 
-const queueDb = lowdb('webhookQueue', {
-  queue: [],
-  failures: []
-});
-
 let queueIsProcessing = false;
 
+function getQueueDb(encryptionKey: string) {
+  return lowdb(
+    'webhookQueue',
+    {
+      queue: [],
+      failures: []
+    },
+    encryptionKey
+  );
+}
+
 export function enqueueWebhook(
+  encryptionKey: string,
   jiraAddon: *,
-  credentialsPassword: string,
   element: QueueElement
 ) {
-  queueDb
+  getQueueDb(encryptionKey)
     .get('queue')
     .push(element)
     .write();
   if (!queueIsProcessing) {
-    processQueue(jiraAddon, credentialsPassword);
+    processQueue(encryptionKey, jiraAddon);
   }
 }
 
-export async function processQueue(jiraAddon: *, credentialPassword: string) {
+async function processElement(
+  encryptionKey: string,
+  jiraAddon: *,
+  gitlabApiInstance: *,
+  queueElement: QueueElement
+) {
+  const clientKey = getWebhookClientKey(
+    encryptionKey,
+    queueElement.key,
+    queueElement.secretKey
+  );
+  // It's OK if this errors - it just means it'll get retried later.
+  const metadata = getWebhookMetadata(encryptionKey, clientKey);
+  const { baseUrl } = await jiraAddon.settings.get('clientInfo', clientKey);
+  const jiraApi = jiraAddon.httpClient({ clientKey });
+
+  const jiraProjects = await jiraRequest(jiraApi, 'get', '/project');
+  const jiraProjectKeys = jiraProjects.map(({ key }) => key);
+
+  let processMetadata: ?WebhookProcessResponseType;
+  switch (queueElement.body.object_kind) {
+    case WEBHOOK_TYPES.COMMENTS:
+      processMetadata = await processWebhookComment(
+        jiraApi,
+        gitlabApiInstance,
+        baseUrl,
+        jiraProjectKeys,
+        queueElement.body
+      );
+      break;
+    case WEBHOOK_TYPES.MERGE_REQUESTS:
+      processMetadata = {
+        projectId: queueElement.body.project.id,
+        projectNamespace: queueElement.body.project.path_with_namespace,
+        mergeRequestId: queueElement.body.object_attributes.iid,
+        issues: [],
+        action: queueElement.body.object_attributes.action
+      };
+      await processWebhookMergeRequest(
+        jiraApi,
+        gitlabApiInstance,
+        baseUrl,
+        jiraProjectKeys,
+        metadata,
+        processMetadata,
+        queueElement.body.changes
+      );
+      break;
+  }
+  if (processMetadata) {
+    updateProject(encryptionKey, processMetadata.projectId, {
+      status: 'healthy'
+    });
+  }
+}
+
+export async function processQueue(encryptionKey: string, jiraAddon: *) {
+  const queueDb = getQueueDb(encryptionKey);
   const queue = queueDb.get('queue').value();
   if (queue.length === 0) {
     queueIsProcessing = false;
@@ -63,69 +126,30 @@ export async function processQueue(jiraAddon: *, credentialPassword: string) {
   const queueElement: QueueElement = queue.shift();
   queueDb.set('queue', queue).write();
 
-  const gitlabApiInstance = gitlabApi(credentialPassword);
+  const gitlabApiInstance = gitlabApi(encryptionKey);
 
   try {
-    const clientKey = getWebhookClientKey(
-      credentialPassword,
-      queueElement.key,
-      queueElement.secretKey
+    await processElement(
+      encryptionKey,
+      jiraAddon,
+      gitlabApiInstance,
+      queueElement
     );
-    // It's OK if this errors - it just means it'll get retried later.
-    const metadata = getWebhookMetadata(clientKey);
-    const { baseUrl } = await jiraAddon.settings.get('clientInfo', clientKey);
-    const jiraApi = jiraAddon.httpClient({ clientKey });
-
-    const jiraProjects = await jiraRequest(jiraApi, 'get', '/project');
-    const jiraProjectKeys = jiraProjects.map(({ key }) => key);
-
-    let processMetadata: ?WebhookProcessResponseType;
-    switch (queueElement.body.object_kind) {
-      case WEBHOOK_TYPES.COMMENTS:
-        processMetadata = await processWebhookComment(
-          jiraApi,
-          gitlabApiInstance,
-          baseUrl,
-          jiraProjectKeys,
-          queueElement.body
-        );
-        break;
-      case WEBHOOK_TYPES.MERGE_REQUESTS:
-        processMetadata = {
-          projectId: queueElement.body.project.id,
-          projectNamespace: queueElement.body.project.path_with_namespace,
-          mergeRequestId: queueElement.body.object_attributes.iid,
-          issues: [],
-          action: queueElement.body.object_attributes.action
-        };
-        await processWebhookMergeRequest(
-          jiraApi,
-          gitlabApiInstance,
-          baseUrl,
-          jiraProjectKeys,
-          metadata,
-          processMetadata,
-          queueElement.body.changes
-        );
-        break;
-    }
-    if (processMetadata) {
-      updateProject(processMetadata.projectId, {
-        status: 'healthy'
-      });
-    }
-    return processQueue(jiraAddon, credentialPassword);
   } catch (error) {
     console.error(error);
     try {
       queueDb
         .get('failures')
-        .push({ id: uuid(), original: queueElement, error })
+        .push({
+          id: uuid(),
+          original: queueElement,
+          error: { message: error.toString(), details: JSON.stringify(error) }
+        })
         .write();
       const { web_url, name_with_namespace } = gitlabApiInstance.Projects.show(
         queueElement.body.project.id
       );
-      updateProject(queueElement.body.project.id, {
+      updateProject(encryptionKey, queueElement.body.project.id, {
         name: name_with_namespace,
         url: web_url,
         status: 'sick'
@@ -133,6 +157,7 @@ export async function processQueue(jiraAddon: *, credentialPassword: string) {
     } catch (fatalError) {
       console.error(fatalError);
     }
-    return processQueue(jiraAddon, credentialPassword);
+  } finally {
+    return processQueue(encryptionKey, jiraAddon);
   }
 }

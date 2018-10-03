@@ -10,26 +10,28 @@ import { enqueueWebhook, processQueue } from './queue';
 import gitlabApi from '../apis/gitlab';
 import type { GitlabCredential } from '../apis/credentials';
 import { getCredential } from '../apis/credentials';
-import { encrypt } from '../lowdb/encrypted';
+import { encrypt } from '../lowdb';
 import type { WebhookProjectStatusType } from '../apis/webhooks';
 
+const GITLAB_SECRET_TOKEN_PASSWORD = 'D+_"WqXsx_#]indVNBP?M3*7?/bnt&hB';
+
 export async function createWebhooks(
-  credentialsPassword: string,
+  encryptionKey: string,
   gitlabProjectId: string,
   selfBaseUrl: string,
   clientKey: string
 ): WebhookProjectStatusType {
   const { appUrl }: GitlabCredential = (getCredential(
-    credentialsPassword,
+    encryptionKey,
     'gitlab'
   ): any);
-  const gitlab = gitlabApi(credentialsPassword);
+  const gitlab = gitlabApi(encryptionKey);
   const currentProjectWebhooks = await gitlab.ProjectHooks.all(gitlabProjectId);
 
   const key = `${kebabCase(
     appUrl.replace(/^http(s|):\/\//, '')
   )}-${gitlabProjectId}`;
-  const secretKey = encrypt(key, 'D+_"WqXsx_#]indVNBP?M3*7?/bnt&hB');
+  const secretKey = encrypt(key, GITLAB_SECRET_TOKEN_PASSWORD);
 
   const webhookUrl = `${selfBaseUrl}/webhooks/${key}`;
   const webhookSettings = {
@@ -67,11 +69,12 @@ export async function createWebhooks(
     gitlabProjectId
   );
   registerProject(
+    encryptionKey,
     gitlabProjectId,
     name_with_namespace,
     `${web_url}/settings/integrations`
   );
-  setWebhookClientKey(credentialsPassword, key, secretKey, clientKey);
+  setWebhookClientKey(encryptionKey, key, secretKey, clientKey);
 
   // $FlowFixMe
   return {
@@ -83,12 +86,12 @@ export async function createWebhooks(
 }
 
 export default function webhooksSetup(
-  credentialsPassword: string,
+  encryptionKey: string,
   jiraAddon: *,
   expressApp: *
 ) {
   // start the process running to pick up any that were left over after last shutdown.
-  processQueue(jiraAddon, credentialsPassword);
+  processQueue(encryptionKey, jiraAddon);
   expressApp.post('/webhooks/:key', (req, res) => {
     res.status(200);
     try {
@@ -98,9 +101,9 @@ export default function webhooksSetup(
       if (
         isValidWebhookType(webhookEventType) &&
         secretKey &&
-        isValidSecretKey(credentialsPassword, key, secretKey)
+        isValidSecretKey(encryptionKey, key, secretKey)
       ) {
-        enqueueWebhook(jiraAddon, credentialsPassword, {
+        enqueueWebhook(encryptionKey, jiraAddon, {
           key,
           secretKey,
           body: req.body

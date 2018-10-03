@@ -33,11 +33,12 @@ const schemas = [
 ];
 
 // Password Must be 256 bytes (32 characters)
-const credentialPassword = require('../../config.json').credentialDbKey;
 
 const app = express();
 
 const addon = ac(app);
+
+const encryptionKey = addon.config.lowdbEncryptionKey();
 
 const port = addon.config.port();
 const devEnv = app.get('env') === 'development';
@@ -125,13 +126,13 @@ app.use(
   expressGraphql({
     schema: makeExecutableSchema({
       typeDefs: schemas,
-      resolvers: root(credentialPassword, addon)
+      resolvers: root(encryptionKey, addon)
     }),
     graphiql: true
   })
 );
 
-webhooksSetup(credentialPassword, addon, app);
+webhooksSetup(encryptionKey, addon, app);
 
 // Root route. This route will serve the `atlassian-connect.json` unless the
 // documentation url inside `atlassian-connect.json` is set
