@@ -45,6 +45,42 @@ const Select = styled(BaseSelect)`
 const getOptionValue = (option) => option.id;
 const getOptionLabel = (option) => option.nameWithNamespace || option.name;
 
+const renderProjectStatus = (project) => {
+  if (project.isLoading) {
+    return <span>Currently Loading and pre-processing issues from GitLab</span>;
+  }
+  if (project.completedCount >= project.totalCount) {
+    return <span>Processed</span>;
+  }
+  if (project.isProcessing) {
+    return (
+      <span>
+        {project.currentIssueIid ? `Issue ${project.currentIssueIid}: ` : null}{' '}
+        {project.currentMessage}
+      </span>
+    );
+  }
+  return <Link to={`/project/${project.projectId}`}>Prepare Migration</Link>;
+};
+
+const renderProjectProgress = (project) => {
+  if (
+    project.isLoading ||
+    (project.isProcessing && project.completedCount < project.totalCount)
+  ) {
+    return (
+      <span>
+        <Spinner /> {project.completedCount} / {project.totalCount}
+      </span>
+    );
+  }
+  return (
+    <span>
+      {project.completedCount} / {project.totalCount}
+    </span>
+  );
+};
+
 export default class Migrations extends Component {
   state = {};
 
@@ -90,6 +126,7 @@ export default class Migrations extends Component {
                   processingProjects {
                     projectId
                     isProcessing
+                    isLoading
                     gitlabProjectName
                     completedCount
                     totalCount
@@ -102,11 +139,13 @@ export default class Migrations extends Component {
             >
               {({ loading, error, data, stopPolling }) => {
                 if (
+                  error ||
                   !data.processingProjects ||
                   !data.processingProjects.find(
                     (project) =>
-                      project.isProcessing &&
-                      project.completedCount < project.totalCount
+                      project.isLoading ||
+                      (project.isProcessing &&
+                        project.completedCount < project.totalCount)
                   )
                 ) {
                   stopPolling();
@@ -144,35 +183,11 @@ export default class Migrations extends Component {
                         },
                         {
                           key: 'progress',
-                          content: (
-                            <span>
-                              {project.isProcessing &&
-                              project.completedCount < project.totalCount ? (
-                                <span>
-                                  <Spinner />{' '}
-                                </span>
-                              ) : null}
-                              {project.completedCount} / {project.totalCount}
-                            </span>
-                          )
+                          content: renderProjectProgress(project)
                         },
                         {
                           key: 'status',
-                          content:
-                            project.completedCount >= project.totalCount ? (
-                              <span>Processed</span>
-                            ) : project.isProcessing ? (
-                              <span>
-                                {project.currentIssueIid
-                                  ? `Issue ${project.currentIssueIid}: `
-                                  : null}
-                                {project.currentMessage}
-                              </span>
-                            ) : (
-                              <Link to={`/project/${project.projectId}`}>
-                                Prepare Migration
-                              </Link>
-                            )
+                          content: renderProjectStatus(project)
                         }
                       ]
                     }))}
@@ -184,6 +199,7 @@ export default class Migrations extends Component {
           </Grid>
         </GridColumn>
         <h4>Start New Migration</h4>
+        <h5>WARNING: Do not attempt to load more than one project at a time</h5>
         <Query
           query={gql`
             {

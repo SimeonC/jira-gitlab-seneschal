@@ -47,6 +47,9 @@ export default class Loader extends Component {
             ({ projectId }) => projectId === gitlabProjectId
           );
           if (currentProject) {
+            if (currentProject.isLoading) {
+              return <Redirect to={`${url}/loading`} />;
+            }
             if (currentProject.isProcessing) {
               return <Redirect to={`${url}/processing`} />;
             }
@@ -54,13 +57,13 @@ export default class Loader extends Component {
           }
           return (
             <Mutation
-              mutation={gql`mutation Init { loadGitlabProject(projectId: "${gitlabProjectId}") { labels } }`}
+              mutation={gql`mutation Init { loadGitlabProject(projectId: "${gitlabProjectId}") { success } }`}
             >
               {(create, { loading: isCreating }) => (
                 <LoadGitlab
                   loading={isCreating}
                   create={create}
-                  redirectUrl={`${url}/mapping`}
+                  redirectUrl={`${url}/loading`}
                 />
               )}
             </Mutation>

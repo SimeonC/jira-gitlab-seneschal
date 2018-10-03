@@ -81,6 +81,20 @@ export function projectStatuses(
   }));
 }
 
+export function projectStatus(
+  encryptionKey: string,
+  gitlabProjectId: string
+): (ProcessingProject & {
+  projectId: string
+})[] {
+  const queueDb = loadQueueDb(encryptionKey);
+  const projects = queueDb.get('processingProjects').value();
+  return {
+    ...projects[gitlabProjectId],
+    projectId: gitlabProjectId
+  };
+}
+
 export async function startProcessingProject(
   encryptionKey: string,
   jiraAddon: *,
