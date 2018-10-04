@@ -26,3 +26,11 @@ When running in production the following ENV Vars should be defined as follows;
 | `$DATABASE_URL`         | Url of the Postgres database to connect to                                                                                                    |
 | `$JIRA_HOST_URL`        | Url of your Jira instance, can be a wildcard. If you need more than one in the whitelist I recommend editing the `config.json` file directly. |
 | `$LOWDB_CREDENTIAL_KEY` | A 32 character string to encode lowdb files when saving them to disk.                                                                         |
+
+### Releasing
+
+To release you first need to setup `conventional-github-releaser` by following the instructions here: https://www.npmjs.com/package/conventional-github-releaser#setup-token-for-cli
+
+Then simply run `npm run release` which will automatically tag, update the changelog and create the github release file.
+
+To ensure this system works all commits must follow the [Angular commit conventions](https://github.com/bcoe/conventional-changelog-standard/blob/master/convention.md)
