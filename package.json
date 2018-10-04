@@ -107,7 +107,7 @@
     "build:server": "babel --config -d ./build/server ./src/server -s",
     "build": "npm run build:client && npm run build:server",
     "test": "node scripts/test.js --env=jsdom",
-    "release": "standard-version && conventional-github-releaser -p angular"
+    "release": "standard-version && git push --follow-tags origin master && conventional-github-releaser -p angular"
   },
   "homepage": "/admin",
   "proxy": "http://localhost:8080/",
