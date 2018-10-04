@@ -11,7 +11,7 @@ export type JiraCredential = {
 };
 
 function loadDb(encryptionKey: string) {
-  return lowdb('credentials', { jira: {}, gitlab: {} }, encryptionKey);
+  return lowdb(encryptionKey, 'credentials', { jira: {}, gitlab: {} });
 }
 
 export function setCredential(

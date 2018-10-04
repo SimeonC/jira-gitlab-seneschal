@@ -40,9 +40,9 @@ function decrypt(text: string, encryptionKey: string): string {
 }
 
 export default function loadEncryptedDb(
-  name: string,
-  defaults: *,
   encryptionKey: string,
+  name: string,
+  defaults?: *,
   options?: { serialize?: ({}) => string, deserialize?: (string) => {} } = {}
 ) {
   if (Buffer.byteLength(encryptionKey) !== 32) {
@@ -54,7 +54,7 @@ export default function loadEncryptedDb(
   }
   const credentialsDb = lowdb(
     name,
-    { ...defaults, encryptionTest },
+    defaults ? { ...defaults, encryptionTest } : undefined,
     {
       ...options,
       serialize: (data) => {

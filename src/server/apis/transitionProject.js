@@ -29,16 +29,16 @@ export default function transitionProjectApi(
   force?: boolean = false
 ) {
   const transitionProjectApiDb = lowdb(
+    encryptionKey,
     `project-${projectId}`,
-    defaults,
-    encryptionKey
+    defaults
   );
 
   // if not processing it is editable
   if (force || !transitionProjectApiDb.get('isProcessing').value())
     return transitionProjectApiDb;
 
-  return lowdb(`project-${projectId}`, null, encryptionKey, {
+  return lowdb(encryptionKey, `project-${projectId}`, null, {
     serialize: () => {
       throw new Error('Cannot edit transition project that is being processed');
     },

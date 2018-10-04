@@ -3,6 +3,7 @@ import lowdb from '../lowdb';
 import createJiraIssue from './createJiraIssue';
 import transitionProjectApi from '../apis/transitionProject';
 import { getCredential, setCredential } from '../apis/credentials';
+import type { JiraCredential } from '../apis/credentials';
 
 type QueueElement = {
   // gitlab project id
@@ -20,15 +21,11 @@ type ProcessingProject = {
 };
 
 function loadQueueDb(encryptionKey: string) {
-  return lowdb(
-    'migrationQueue',
-    {
-      queue: [],
-      failures: [],
-      processingProjects: {}
-    },
-    encryptionKey
-  );
+  return lowdb(encryptionKey, 'migrationQueue', {
+    queue: [],
+    failures: [],
+    processingProjects: {}
+  });
 }
 
 const JIRA_GITLAB_PROJECT_KEY = 'jira-client-key-for-gitlab-project';
@@ -158,7 +155,11 @@ export async function processQueue(encryptionKey: string, jiraAddon: *) {
   const queueElement: QueueElement = queue.shift();
   queueDb.set('queue', queue).write();
 
-  const jiraApi = initJiraApi(encryptionKey, jiraAddon, queueElement.projectId);
+  const { api: jiraApi, baseUrl: jiraBaseUrl } = await initJiraApi(
+    encryptionKey,
+    jiraAddon,
+    queueElement.projectId
+  );
 
   queueDb
     .set(

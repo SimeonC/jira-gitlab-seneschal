@@ -35,14 +35,10 @@ type FailureElement = {
 let queueIsProcessing = false;
 
 function getQueueDb(encryptionKey: string) {
-  return lowdb(
-    'webhookQueue',
-    {
-      queue: [],
-      failures: []
-    },
-    encryptionKey
-  );
+  return lowdb(encryptionKey, 'webhookQueue', {
+    queue: [],
+    failures: []
+  });
 }
 
 export function enqueueWebhook(

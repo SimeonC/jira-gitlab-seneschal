@@ -48,37 +48,33 @@ export type WebhookProjectStatusType = {
 };
 
 function loadDb(encryptionKey: string) {
-  return lowdb('webhooks', { hooks: {} }, encryptionKey);
+  return lowdb(encryptionKey, 'webhooks', { hooks: {} });
 }
 
 function loadStatusDb(encryptionKey: string) {
-  return lowdb('webhooksStatus', { projects: [] }, encryptionKey);
+  return lowdb(encryptionKey, 'webhooksStatus', { projects: [] });
 }
 
 function loadMetadataDb(encryptionKey: string) {
-  return lowdb(
-    'webhooksMetadata',
-    {
-      __default: {
-        transitionKeywords: [
-          'fix',
-          'fixes',
-          'fixed',
-          'close',
-          'closes',
-          'closed',
-          'complete',
-          'completes',
-          'completed',
-          'resolve',
-          'resolves',
-          'resolved'
-        ],
-        transitionMap: []
-      }
-    },
-    encryptionKey
-  );
+  return lowdb(encryptionKey, 'webhooksMetadata', {
+    __default: {
+      transitionKeywords: [
+        'fix',
+        'fixes',
+        'fixed',
+        'close',
+        'closes',
+        'closed',
+        'complete',
+        'completes',
+        'completed',
+        'resolve',
+        'resolves',
+        'resolved'
+      ],
+      transitionMap: []
+    }
+  });
 }
 
 export function getWebhookMetadata(

@@ -18,15 +18,11 @@ process.on('message', (message: MessageType) => {
 });
 
 function getMigrationQueueDb(encryptionKey: string) {
-  return lowdb(
-    'migrationQueue',
-    {
-      queue: [],
-      failures: [],
-      processingProjects: {}
-    },
-    encryptionKey
-  );
+  return lowdb(encryptionKey, 'migrationQueue', {
+    queue: [],
+    failures: [],
+    processingProjects: {}
+  });
 }
 
 // This is done as recursive to allow it to be non-blocking in the thread
