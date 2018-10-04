@@ -68,6 +68,12 @@ export function reprocessAllFailures(encryptionKey: string, jiraAddon: *) {
   if (!queueIsProcessing) processQueue(encryptionKey, jiraAddon);
 }
 
+export function projectFailures(encryptionKey: string) {
+  return loadQueueDb(encryptionKey)
+    .get('failures')
+    .value();
+}
+
 export function projectStatuses(
   encryptionKey: string
 ): (ProcessingProject & {
@@ -194,7 +200,7 @@ export async function processQueue(encryptionKey: string, jiraAddon: *) {
         config: error.config
           ? {
               url: error.config.url,
-              data: JSON.parse(error.config.data)
+              data: error.config.data
             }
           : null
       })

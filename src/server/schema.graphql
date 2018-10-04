@@ -22,6 +22,22 @@ type ProcessingProject {
   currentIssueIid: String
 }
 
+type FailureConfig {
+  url: String
+  data: String
+}
+
+type QueueElement {
+  projectId: String
+  issueIid: String
+}
+
+type ProcessingFailure {
+  queueElement: QueueElement!
+  error: String
+  config: FailureConfig
+}
+
 type SuccessResponse {
   success: Boolean
 }
@@ -30,6 +46,7 @@ type Queries {
   isSetup: SuccessResponse
   jiraProjects: [JiraProject!]!
   gitlabProjects: [GitlabProject!]!
+  processingFailures: [ProcessingFailure]
   processingProjects: [ProcessingProject]
   processingProject(gitlabProjectId: String!): ProcessingProject
   projectMapping(gitlabProjectId: String!): TransitionProjectMapping

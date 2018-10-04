@@ -123,6 +123,17 @@ export default class Migrations extends Component {
             <Query
               query={gql`
                 {
+                  processingFailures {
+                    error
+                    queueElement {
+                      projectId
+                      issueIid
+                    }
+                    config {
+                      url
+                      data
+                    }
+                  }
                   processingProjects {
                     projectId
                     isProcessing

@@ -19,7 +19,8 @@ import {
   projectStatus,
   reprocessAllFailures,
   reprocessFailure,
-  startProcessingProject
+  startProcessingProject,
+  projectFailures
 } from './transition/migrationQueue';
 import createVersionsFromMilestones, {
   createVersionFromMilestone
@@ -164,6 +165,10 @@ export default function(encryptionKey: string, addon: *) {
     return {
       success: true
     };
+  }
+
+  function processingFailures() {
+    return projectFailures(encryptionKey);
   }
 
   function processingProjects() {
@@ -367,7 +372,9 @@ export default function(encryptionKey: string, addon: *) {
       isSetup,
       jiraProjects,
       gitlabProjects,
+      processingFailures,
       processingProjects,
+      processingProject,
       projectMapping,
       projectIssues,
       projectMeta,
