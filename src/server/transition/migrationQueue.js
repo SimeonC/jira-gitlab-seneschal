@@ -136,12 +136,20 @@ export async function startProcessingProject(
   }
 }
 
-function initJiraApi(encryptionKey: string, addon: *, gitlabProjectId: string) {
-  const jiraCredentials = getCredential(
+async function initJiraApi(
+  encryptionKey: string,
+  addon: *,
+  gitlabProjectId: string
+): { api: *, baseUrl: string } {
+  const jiraCredentials: JiraCredential = (getCredential(
     encryptionKey,
     `${JIRA_GITLAB_PROJECT_KEY}-${gitlabProjectId}`
-  );
-  return addon.httpClient(jiraCredentials);
+  ): any);
+  // $FlowFixMe
+  return {
+    api: addon.httpClient(jiraCredentials),
+    ...(await addon.settings.get('clientInfo', jiraCredentials.clientKey))
+  };
 }
 
 export async function processQueue(encryptionKey: string, jiraAddon: *) {
@@ -171,6 +179,7 @@ export async function processQueue(encryptionKey: string, jiraAddon: *) {
     await createJiraIssue(
       encryptionKey,
       jiraApi,
+      jiraBaseUrl,
       queueElement.projectId,
       queueElement.issueIid,
       (message) => {

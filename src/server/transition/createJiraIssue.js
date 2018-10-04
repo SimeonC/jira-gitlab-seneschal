@@ -24,11 +24,13 @@ function transformLabels(labels: string[]) {
 export default async function createJiraIssue(
   encryptionKey: string,
   jiraApi: *,
+  jiraBaseUrl: string,
   gitlabProjectId: string,
   gitlabIssueIid: string,
   logger: (message: string) => void
 ) {
   const gitlabApi = GitlabApi(encryptionKey);
+
   const transitionProjectDb = transitionProjectApi(
     encryptionKey,
     gitlabProjectId
@@ -183,6 +185,12 @@ export default async function createJiraIssue(
     }
   });
   const jiraIssue = jiraIssueCreateResponse;
+
+  await gitlabApi.Issues.edit(gitlabProjectId, gitlabIssueIid, {
+    description: `Migrated to: [${jiraIssue.key}](${jiraBaseUrl}/browse/${
+      jiraIssue.key
+    })\n\n  ${description}`
+  });
 
   try {
     await jiraRequest(jiraApi, 'post', `/issue/${jiraIssue.key}/remotelink`, {
