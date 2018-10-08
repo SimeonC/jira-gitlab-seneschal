@@ -376,6 +376,9 @@ export default function(encryptionKey: string, addon: *) {
   }
 
   processQueue(encryptionKey, addon);
+  loadGitlabProjectProcess.send({
+    encryptionKey
+  });
 
   // bind all these functions to pass in the addon/jira api
   return {

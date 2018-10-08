@@ -14,7 +14,11 @@ export type MessageType = {
 };
 
 process.on('message', (message: MessageType) => {
-  loadGitlabProjectIssues(message.encryptionKey, message.projectId);
+  if (message.projectId) {
+    loadGitlabProjectIssues(message.encryptionKey, message.projectId);
+  } else {
+    processIssues(message.encryptionKey);
+  }
 });
 
 function getMigrationQueueDb(encryptionKey: string) {
@@ -25,21 +29,37 @@ function getMigrationQueueDb(encryptionKey: string) {
   });
 }
 
-// This is done as recursive to allow it to be non-blocking in the thread
-async function processIssue(
-  encryptionKey: string,
-  projectMeta: *,
-  projectId: string,
-  issues: *[],
-  index: number
-) {
-  const migrationQueueDb = getMigrationQueueDb(encryptionKey);
-  const transitionProjectDb = transitionProjectApi(encryptionKey, projectId);
-  const issue = issues[index];
-  const currentIssues = transitionProjectDb.get('issues');
-  if (!currentIssues.find({ id: issue.id }).value()) {
-    currentIssues.push(issue).write();
+let isProcessing = false;
+
+function processIssues(encryptionKey: string) {
+  isProcessing = true;
+  while (isProcessing) {
+    const projects = getMigrationQueueDb(encryptionKey)
+      .get('processingProjects')
+      .value();
+    const projectKeys = Object.keys(projects).sort();
+    const projectId = projectKeys.find((key) => projects[key].isLoading);
+    if (!projectId) {
+      isProcessing = false;
+      return;
+    }
+    processIssue(
+      encryptionKey,
+      projectId,
+      projects[projectId].completedCount,
+      projects[projectId].totalCount
+    );
   }
+}
+
+function processIssue(
+  encryptionKey: string,
+  projectId: string,
+  index: number,
+  totalIssues: number
+) {
+  const transitionProjectDb = transitionProjectApi(encryptionKey, projectId);
+  const issue = transitionProjectDb.get(`issues[${index}]`).value;
   const labels = transitionProjectDb.get('labels').value();
   transitionProjectDb
     .set('labels', unique(labels.concat(issue.labels)))
@@ -57,39 +77,21 @@ async function processIssue(
   transitionProjectDb
     .set('users', uniqueBy(allUsers.concat(compact(issueUsers)), 'id'))
     .write();
-  migrationQueueDb
-    .set(`processingProjects.${projectId}`, {
-      projectId,
-      isProcessing: false,
-      isLoading: true,
-      completedCount: index,
-      totalCount: issues.length,
-      gitlabProjectName: projectMeta.name_with_namespace,
-      currentMessage: 'Pre-Processing'
-    })
+  getMigrationQueueDb(encryptionKey)
+    .set(`processingProjects.${projectId}.completedCount`, index + 1)
     .write();
 
-  if (index < issues.length - 1) {
-    return processIssue(
-      encryptionKey,
-      projectMeta,
-      projectId,
-      issues,
-      index + 1
-    );
+  if (index >= totalIssues) {
+    getMigrationQueueDb(encryptionKey)
+      .set(`processingProjects.${projectId}.isProcessing`, false)
+      .write();
+    getMigrationQueueDb(encryptionKey)
+      .set(`processingProjects.${projectId}.isLoading`, false)
+      .write();
+    getMigrationQueueDb(encryptionKey)
+      .set(`processingProjects.${projectId}.completedCount`, 0)
+      .write();
   }
-
-  migrationQueueDb
-    .set(`processingProjects.${projectId}`, {
-      projectId,
-      isProcessing: false,
-      isLoading: false,
-      completedCount: 0,
-      totalCount: issues.length,
-      gitlabProjectName: projectMeta.name_with_namespace,
-      currentMessage: 'Pre-Processing'
-    })
-    .write();
 }
 
 async function loadGitlabProjectIssues(
@@ -97,8 +99,7 @@ async function loadGitlabProjectIssues(
   projectId: string
 ) {
   const gitlabApi = GitlabApi(encryptionKey);
-  const migrationQueueDb = getMigrationQueueDb(encryptionKey);
-  migrationQueueDb
+  getMigrationQueueDb(encryptionKey)
     .set(`processingProjects.${projectId}`, {
       projectId,
       isProcessing: false,
@@ -117,16 +118,9 @@ async function loadGitlabProjectIssues(
   const issues = await gitlabApi.Issues.all({
     projectId
   });
-  migrationQueueDb
-    .set(`processingProjects.${projectId}`, {
-      projectId,
-      isProcessing: false,
-      isLoading: true,
-      completedCount: 0,
-      totalCount: issues.length,
-      gitlabProjectName: projectMeta.name_with_namespace,
-      currentMessage: 'Pre-Processing'
-    })
-    .write();
-  processIssue(encryptionKey, projectMeta, projectId, issues, 0);
+  transitionProjectDb.set('issues', issues).write();
+
+  if (!isProcessing) {
+    processIssues(encryptionKey);
+  }
 }
