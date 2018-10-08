@@ -32,3 +32,9 @@ export function getCredential(
     .get(key)
     .value();
 }
+
+export function clearCredential(encryptionKey: string, key: 'gitlab' | string) {
+  loadDb(encryptionKey)
+    .unset(key)
+    .write();
+}

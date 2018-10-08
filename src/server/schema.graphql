@@ -75,6 +75,7 @@ type Mutations {
   setWebhookMetadata(metadata: WebhookMetadataInput): WebhookMetadata
   createGitlabWebhooks(gitlabProjectId: String!): WebhookStatus
   processProject(gitlabProjectId: String): SuccessResponse
+  clearMigrationProject(gitlabProjectId: String): SuccessResponse
   createJiraVersionFromMilestone(
     jiraProjectId: String!
     gitlabProjectId: String!

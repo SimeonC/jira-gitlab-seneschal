@@ -1,8 +1,14 @@
 //@flow
 import lowdb from '../lowdb';
 import createJiraIssue from './createJiraIssue';
-import transitionProjectApi from '../apis/transitionProject';
-import { getCredential, setCredential } from '../apis/credentials';
+import transitionProjectApi, {
+  deleteTransitionProjectApi
+} from '../apis/transitionProject';
+import {
+  getCredential,
+  setCredential,
+  clearCredential
+} from '../apis/credentials';
 import type { JiraCredential } from '../apis/credentials';
 
 type QueueElement = {
@@ -87,13 +93,14 @@ export function projectStatuses(
 export function projectStatus(
   encryptionKey: string,
   gitlabProjectId: string
-): (ProcessingProject & {
+): ?(ProcessingProject & {
   projectId: string
-})[] {
+}) {
   const queueDb = loadQueueDb(encryptionKey);
-  const projects = queueDb.get('processingProjects').value();
+  const project = queueDb.get(`processingProjects.${gitlabProjectId}`).value();
+  if (!project) return null;
   return {
-    ...projects[gitlabProjectId],
+    ...project,
     projectId: gitlabProjectId
   };
 }
@@ -134,6 +141,14 @@ export async function startProcessingProject(
   if (!queueIsProcessing) {
     return processQueue(encryptionKey, jiraAddon);
   }
+}
+
+export async function clearProject(encryptionKey: string, projectId: string) {
+  deleteTransitionProjectApi(projectId);
+  clearCredential(encryptionKey, `${JIRA_GITLAB_PROJECT_KEY}-${projectId}`);
+
+  const queueDb = loadQueueDb(encryptionKey);
+  queueDb.unset(`processingProjects.${projectId}`).write();
 }
 
 async function initJiraApi(

@@ -19,6 +19,7 @@ import {
   projectStatus,
   reprocessAllFailures,
   reprocessFailure,
+  clearProject,
   startProcessingProject,
   projectFailures
 } from './transition/migrationQueue';
@@ -152,6 +153,16 @@ export default function(encryptionKey: string, addon: *) {
     return projects.map((project) =>
       mapKeys(project, (value, key) => camelCase(key))
     );
+  }
+
+  async function clearMigrationProject(
+    root: *,
+    { gitlabProjectId }: { gitlabProjectId: string }
+  ) {
+    clearProject(encryptionKey, gitlabProjectId);
+    return {
+      success: true
+    };
   }
 
   async function loadGitlabProject(
@@ -398,6 +409,7 @@ export default function(encryptionKey: string, addon: *) {
       createGitlabWebhooks,
       processProject,
       createJiraVersionFromMilestone,
+      clearMigrationProject,
       migrateMilestones,
       retryFailure,
       retryAllFailures
