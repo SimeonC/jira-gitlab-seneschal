@@ -45,9 +45,57 @@ const Select = styled(BaseSelect)`
 const getOptionValue = (option) => option.id;
 const getOptionLabel = (option) => option.nameWithNamespace || option.name;
 
+const processingQuery = gql`
+  query ProcessingStatuses {
+    processingFailures {
+      error
+      queueElement {
+        projectId
+        issueIid
+      }
+      config {
+        url
+        data
+      }
+    }
+    processingProjects {
+      projectId
+      isProcessing
+      isLoading
+      gitlabProjectName
+      completedCount
+      totalCount
+      currentMessage
+      currentIssueIid
+    }
+  }
+`;
+
+const RemoveButton = ({ project }: *) => (
+  <Mutation
+    mutation={gql`mutation {
+    clearMigrationProject(gitlabProjectId: "${project.projectId}") {
+      success
+    }
+  }`}
+    refetchQueries={['ProcessingStatuses']}
+  >
+    {(remove, { loading }) => (
+      <Button onClick={remove} isLoading={loading}>
+        Remove
+      </Button>
+    )}
+  </Mutation>
+);
+
 const renderProjectStatus = (project) => {
   if (project.isLoading) {
-    return <span>Currently Loading and pre-processing issues from GitLab</span>;
+    return (
+      <span>
+        <span>Currently Loading and pre-processing issues from GitLab</span>
+        <RemoveButton project={project} />
+      </span>
+    );
   }
   if (project.completedCount >= project.totalCount) {
     return <span>Processed</span>;
@@ -60,7 +108,12 @@ const renderProjectStatus = (project) => {
       </span>
     );
   }
-  return <Link to={`/project/${project.projectId}`}>Prepare Migration</Link>;
+  return (
+    <span>
+      <Link to={`/project/${project.projectId}`}>Prepare Migration</Link>{' '}
+      <RemoveButton project={project} />
+    </span>
+  );
 };
 
 const renderProjectProgress = (project) => {
@@ -120,34 +173,7 @@ export default class Migrations extends Component {
                 </Button>
               )}
             </Mutation>
-            <Query
-              query={gql`
-                {
-                  processingFailures {
-                    error
-                    queueElement {
-                      projectId
-                      issueIid
-                    }
-                    config {
-                      url
-                      data
-                    }
-                  }
-                  processingProjects {
-                    projectId
-                    isProcessing
-                    isLoading
-                    gitlabProjectName
-                    completedCount
-                    totalCount
-                    currentMessage
-                    currentIssueIid
-                  }
-                }
-              `}
-              pollInterval={1000}
-            >
+            <Query query={processingQuery} pollInterval={2500}>
               {({ loading, error, data, stopPolling }) => {
                 if (
                   error ||
@@ -210,7 +236,6 @@ export default class Migrations extends Component {
           </Grid>
         </GridColumn>
         <h4>Start New Migration</h4>
-        <h5>WARNING: Do not attempt to load more than one project at a time</h5>
         <Query
           query={gql`
             {

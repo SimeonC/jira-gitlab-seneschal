@@ -4,10 +4,10 @@ import { Redirect, Link } from 'react-router-dom';
 import Spinner from '@atlaskit/spinner';
 import gql from 'graphql-tag';
 
-const processingProjectsQuery = gql`
-  {
-    processingProjects {
-      projectId
+const isProjectLoadingQuery = gql`
+  query IsLoadingQuery($projectId: String!) {
+    processingProject(gitlabProjectId: $projectId) {
+      isLoading
       isProcessing
     }
   }
@@ -40,12 +40,13 @@ export default class Loader extends Component {
       );
     }
     return (
-      <Query query={processingProjectsQuery}>
+      <Query
+        query={isProjectLoadingQuery}
+        variables={{ projectId: gitlabProjectId }}
+      >
         {({ loading, data }) => {
           if (loading) return <Spinner />;
-          const currentProject = data.processingProjects.find(
-            ({ projectId }) => projectId === gitlabProjectId
-          );
+          const currentProject = data.processingProject;
           if (currentProject) {
             if (currentProject.isLoading) {
               return <Redirect to={`${url}/loading`} />;

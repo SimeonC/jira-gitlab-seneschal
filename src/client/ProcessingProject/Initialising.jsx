@@ -17,7 +17,7 @@ export default class Initialising extends Component {
             }
           }
         `}
-        pollInterval={2000}
+        pollInterval={2500}
       >
         {({ data, loading, error }) => {
           if (
