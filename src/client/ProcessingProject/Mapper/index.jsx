@@ -54,7 +54,6 @@ const mainQuery = gql`
     projectMilestones(gitlabProjectId: $gitlabProjectId) {
       id
       iid
-      project_id
       title
       description
       state
@@ -266,9 +265,6 @@ class Mapping extends Component<{
       variables
     });
     this.context.client.queryManager.broadcastQueries();
-    const requery = store.readQuery({ query: mainQuery, variables });
-    console.log('updated', { updatedData, requery, variables });
-    // it's the id variable :( gotta rename ALL the id's cause they probably aren't unique...
   };
 
   genericMappingUpdate = (store, { data }) => {
@@ -516,10 +512,6 @@ export default class Mapper extends Component<{
       >
         {({ loading, data }) => {
           if (loading) return <Spinner />;
-          console.log(
-            'should have new data here',
-            data.projectMapping.statuses
-          );
           return (
             <Mapping
               data={data}
