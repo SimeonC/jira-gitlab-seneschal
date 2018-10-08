@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="1.3.0"></a>
+# [1.3.0](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v1.2.0...v1.3.0) (2018-10-08)
+
+
+### Bug Fixes
+
+* **loadIssues:** fix memory crash and make the load more reliable ([0ef8da2](https://github.com/SimeonC/jira-gitlab-seneschal/commit/0ef8da2))
+* **Mapper:** milestones for groups should now work ([6098887](https://github.com/SimeonC/jira-gitlab-seneschal/commit/6098887))
+
+
+### Features
+
+* **Migration:** add polling and cleanup responses ([fcfe84f](https://github.com/SimeonC/jira-gitlab-seneschal/commit/fcfe84f))
+* **transintion:** support clearing of broken imports ([b56f5c4](https://github.com/SimeonC/jira-gitlab-seneschal/commit/b56f5c4))
+
+
+
 <a name="1.2.0"></a>
 # 1.2.0 (2018-10-04)
 
