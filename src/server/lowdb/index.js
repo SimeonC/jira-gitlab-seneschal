@@ -8,6 +8,9 @@ const IV_LENGTH = 16; // For AES, this is always 16
 const encryptionTest = 'Test This String Correctly Decrypts';
 const algorithm = 'aes-256-cbc';
 
+const isDevelopment =
+  !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+
 export function encrypt(text: string, encryptionKey: string): string {
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(
@@ -62,10 +65,15 @@ export default function loadEncryptedDb(
         if (options.serialize) {
           parsedData = options.serialize(data);
         }
-        return encrypt(parsedData, encryptionKey);
+        return isDevelopment && name !== 'credentials'
+          ? parsedData
+          : encrypt(parsedData, encryptionKey);
       },
       deserialize: (data) => {
-        const serializedData = decrypt(data, encryptionKey);
+        const serializedData =
+          isDevelopment && name !== 'credentials'
+            ? data
+            : decrypt(data, encryptionKey);
         if (options.deserialize) {
           return options.deserialize(serializedData);
         }
