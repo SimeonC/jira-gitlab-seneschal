@@ -1,5 +1,20 @@
 # jira-gitlab-seneschal
 
+<p align="center">
+    <a href="#docker-stars" alt="Stars on docker">
+        <img src="https://img.shields.io/docker/stars/simeonc/jira-gitlab-seneschal.svg" />
+    </a>
+    <a href="#docker-pulls" alt="Pulls on docker">
+        <img src="https://img.shields.io/docker/pulls/simeonc/jira-gitlab-seneschal.svg" />
+    </a>
+    <a href="#docker-auto-build" alt="Docker Automated Build">
+        <img src="https://img.shields.io/docker/automated/simeonc/jira-gitlab-seneschal.svg" />
+    </a>
+    <a href="#docker-status" alt="Docker Status">
+        <img src="https://img.shields.io/docker/status/simeonc/jira-gitlab-seneschal.svg" />
+    </a>
+</p>
+
 A tool for migrating to and managing issues in JIRA and Git in GitLab.
 
 ### Migration Notes
