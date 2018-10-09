@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="2.0.0"></a>
+# [2.0.0](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v1.4.0...v2.0.0) (2018-10-09)
+
+
+### Bug Fixes
+
+* **client:** remove eslint warnings ([148c3ff](https://github.com/SimeonC/jira-gitlab-seneschal/commit/148c3ff))
+* **Initialising:** provide progress on initial load of issues ([d8954de](https://github.com/SimeonC/jira-gitlab-seneschal/commit/d8954de))
+* **loadIssues:** handle stack overflow on recursion ([36c010d](https://github.com/SimeonC/jira-gitlab-seneschal/commit/36c010d))
+* **lowdb:** enable development mode ([34f391c](https://github.com/SimeonC/jira-gitlab-seneschal/commit/34f391c))
+* **migrationQueue:** prevent stack overflow and handle milestones correctly ([4ab4f8d](https://github.com/SimeonC/jira-gitlab-seneschal/commit/4ab4f8d))
+* **transition/markdownTransform:** handle whitespace before header ([f7bbabf](https://github.com/SimeonC/jira-gitlab-seneschal/commit/f7bbabf))
+
+
+### Features
+
+* **config:** change to `JIRA_HOST` ([a656134](https://github.com/SimeonC/jira-gitlab-seneschal/commit/a656134))
+
+
+### BREAKING CHANGES
+
+* **config:** `JIRA_HOST_URL` env var has been changed to `JIRA_HOST`
+
+
+
 <a name="1.4.0"></a>
 # [1.4.0](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v1.3.0...v1.4.0) (2018-10-08)
 
