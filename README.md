@@ -11,7 +11,7 @@
         <img src="https://img.shields.io/docker/automated/simeonc/jira-gitlab-seneschal.svg" />
     </a>
     <a href="#docker-status" alt="Docker Status">
-        <img src="https://img.shields.io/docker/status/simeonc/jira-gitlab-seneschal.svg" />
+        <img src="https://img.shields.io/docker/build/simeonc/jira-gitlab-seneschal.svg" />
     </a>
 </p>
 
