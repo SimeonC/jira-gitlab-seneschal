@@ -57,7 +57,7 @@ export function reprocessFailure(
     .get('queue')
     .push(reprocessedFailure.queueElement)
     .write();
-  if (!queueIsProcessing) processQueue(encryptionKey, jiraAddon);
+  processQueue(encryptionKey, jiraAddon);
 }
 
 export function reprocessAllFailures(encryptionKey: string, jiraAddon: *) {
@@ -68,7 +68,7 @@ export function reprocessAllFailures(encryptionKey: string, jiraAddon: *) {
     .get('queue')
     .push(...failures.map(({ queueElement }) => queueElement))
     .write();
-  if (!queueIsProcessing) processQueue(encryptionKey, jiraAddon);
+  processQueue(encryptionKey, jiraAddon);
 }
 
 export function projectFailures(encryptionKey: string) {
@@ -127,20 +127,12 @@ export async function startProcessingProject(
       })
       .write();
   });
+  queueDb.set(`processingProjects.${projectId}.isProcessing`, true).write();
   queueDb
-    .set(`processingProjects.${projectId}`, {
-      projectId,
-      isLoading: false,
-      isProcessing: true,
-      completedCount: 0,
-      totalCount: issues.length,
-      gitlabProjectName: projectDb.get('meta').value().nameWithNamespace,
-      currentMessage: 'Starting Up'
-    })
+    .set(`processingProjects.${projectId}.currentMessage`, 'Starting Up')
     .write();
-  if (!queueIsProcessing) {
-    return processQueue(encryptionKey, jiraAddon);
-  }
+  queueDb.set(`processingProjects.${projectId}.completedCount`, 0).write();
+  processQueue(encryptionKey, jiraAddon);
 }
 
 export async function clearProject(encryptionKey: string, projectId: string) {
@@ -167,17 +159,38 @@ async function initJiraApi(
   };
 }
 
-export async function processQueue(encryptionKey: string, jiraAddon: *) {
+function unshiftQueueElement(encryptionKey: string): ?QueueElement {
   const queueDb = loadQueueDb(encryptionKey);
   const queue = queueDb.get('queue').value();
+  const element: QueueElement = queue.shift();
+  queueDb.set('queue', queue).write();
+  return element;
+}
+
+export async function processQueue(encryptionKey: string, jiraAddon: *) {
+  if (queueIsProcessing) return;
+  const queue = loadQueueDb(encryptionKey)
+    .get('queue')
+    .value();
   if (queue.length === 0) {
-    queueIsProcessing = false;
-    return false;
+    return;
   }
   queueIsProcessing = true;
-  const queueElement: QueueElement = queue.shift();
-  queueDb.set('queue', queue).write();
 
+  let queueElement: ?QueueElement = unshiftQueueElement(encryptionKey);
+  while (queueElement) {
+    await processQueueElement(encryptionKey, jiraAddon, queueElement);
+    queueElement = unshiftQueueElement(encryptionKey);
+  }
+  queueIsProcessing = false;
+}
+
+async function processQueueElement(
+  encryptionKey: string,
+  jiraAddon: *,
+  queueElement: QueueElement
+) {
+  const queueDb = loadQueueDb(encryptionKey);
   const { api: jiraApi, baseUrl: jiraBaseUrl } = await initJiraApi(
     encryptionKey,
     jiraAddon,
@@ -231,6 +244,4 @@ export async function processQueue(encryptionKey: string, jiraAddon: *) {
       })
       .write();
   }
-
-  return processQueue(encryptionKey, jiraAddon);
 }

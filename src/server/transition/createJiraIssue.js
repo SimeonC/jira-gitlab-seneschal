@@ -116,7 +116,7 @@ export default async function createJiraIssue(
   let fixVersions;
   if (milestone && milestone.id) {
     const version = mapping.versions.find(
-      (versionMap) => versionMap.milestoneId === milestone.id
+      (versionMap) => versionMap.milestoneId === `${milestone.id}`
     );
     if (version) {
       fixVersions = [
