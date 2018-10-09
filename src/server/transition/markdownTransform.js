@@ -66,10 +66,14 @@ function transformFormatting(markdownString: string) {
 }
 
 function transformHeaders(markdownString: string) {
-  return transformByRegex(markdownString, /\n([#]+)/gim, (currentMatch) => {
-    const headerSize = currentMatch[1].length;
-    return `\nh${headerSize}. `;
-  });
+  return transformByRegex(
+    markdownString,
+    /\n[\W]*([#]+)/gim,
+    (currentMatch) => {
+      const headerSize = currentMatch[1].length;
+      return `\nh${headerSize}. `;
+    }
+  );
 }
 
 export default async function markdownTransform(
