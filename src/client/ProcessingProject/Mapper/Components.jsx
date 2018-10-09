@@ -24,10 +24,6 @@ type PropsType = {
   update: any
 };
 
-type StateType = {
-  selectedIssueType?: *
-};
-
 const FormRow = styled.div`
   display: flex;
   flex-direction: row;

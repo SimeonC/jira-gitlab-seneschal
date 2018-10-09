@@ -3,7 +3,6 @@ import React, { Component } from 'react';
 import styled, { css } from 'styled-components';
 import { Query, Mutation } from 'react-apollo';
 import gql from 'graphql-tag';
-import { Link } from 'react-router-dom';
 import startCase from 'lodash/startCase';
 
 import Page, { Grid, GridColumn } from '@atlaskit/page';
@@ -42,12 +41,13 @@ const Select = styled(BaseSelect)`
 
 const statusColor = (status: WebhookProjectStatusEnumType) => {
   switch (status) {
-    case 'pending':
-      return 'yellow';
     case 'healthy':
       return 'green';
     case 'sick':
       return 'red';
+    case 'pending':
+    default:
+      return 'yellow';
   }
 };
 
