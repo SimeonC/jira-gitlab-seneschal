@@ -40,6 +40,11 @@ const loadGitlabProjectProcess = fork(
   path.join(__dirname, './transition/loadIssues')
 );
 
+// Debug Code - console.log breaks in forked process
+loadGitlabProjectProcess.on('message', (message) => {
+  console.log('[ProjectProcess]', message);
+});
+
 const cleanExit = (signal) => {
   loadGitlabProjectProcess.kill(signal);
   process.exit();

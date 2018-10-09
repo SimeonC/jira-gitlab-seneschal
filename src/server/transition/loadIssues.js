@@ -31,25 +31,29 @@ function getMigrationQueueDb(encryptionKey: string) {
 
 let isProcessing = false;
 
+function getProjectToProcess(encryptionKey: string) {
+  const projects = getMigrationQueueDb(encryptionKey)
+    .get('processingProjects')
+    .value();
+  const projectKeys = Object.keys(projects).sort();
+  const projectId = projectKeys.find((key) => projects[key].isLoading);
+  return projects[projectId];
+}
+
 function processIssues(encryptionKey: string) {
+  if (isProcessing) return;
   isProcessing = true;
-  while (isProcessing) {
-    const projects = getMigrationQueueDb(encryptionKey)
-      .get('processingProjects')
-      .value();
-    const projectKeys = Object.keys(projects).sort();
-    const projectId = projectKeys.find((key) => projects[key].isLoading);
-    if (!projectId) {
-      isProcessing = false;
-      return;
-    }
+  let project = getProjectToProcess(encryptionKey);
+  while (project) {
     processIssue(
       encryptionKey,
-      projectId,
-      projects[projectId].completedCount,
-      projects[projectId].totalCount
+      project.projectId,
+      project.completedCount,
+      project.totalCount
     );
+    project = getProjectToProcess(encryptionKey);
   }
+  isProcessing = false;
 }
 
 function processIssue(
@@ -59,10 +63,10 @@ function processIssue(
   totalIssues: number
 ) {
   const transitionProjectDb = transitionProjectApi(encryptionKey, projectId);
-  const issue = transitionProjectDb.get(`issues[${index}]`).value;
+  const issue = transitionProjectDb.get(`issues[${index}]`).value();
   const labels = transitionProjectDb.get('labels').value();
   transitionProjectDb
-    .set('labels', unique(labels.concat(issue.labels)))
+    .set('labels', unique(labels.concat(issue.labels || [])))
     .write();
   if (issue.milestone) {
     const milestones = transitionProjectDb.get('milestones').value();
@@ -80,15 +84,10 @@ function processIssue(
   getMigrationQueueDb(encryptionKey)
     .set(`processingProjects.${projectId}.completedCount`, index + 1)
     .write();
-
-  if (index >= totalIssues) {
+  if (index + 1 >= totalIssues) {
     getMigrationQueueDb(encryptionKey)
       .set(`processingProjects.${projectId}.isProcessing`, false)
-      .write();
-    getMigrationQueueDb(encryptionKey)
       .set(`processingProjects.${projectId}.isLoading`, false)
-      .write();
-    getMigrationQueueDb(encryptionKey)
       .set(`processingProjects.${projectId}.completedCount`, 0)
       .write();
   }
@@ -98,29 +97,39 @@ async function loadGitlabProjectIssues(
   encryptionKey: string,
   projectId: string
 ) {
-  const gitlabApi = GitlabApi(encryptionKey);
-  getMigrationQueueDb(encryptionKey)
+  const migrationDb = getMigrationQueueDb(encryptionKey);
+  migrationDb
     .set(`processingProjects.${projectId}`, {
       projectId,
       isProcessing: false,
       isLoading: true,
       completedCount: 0,
-      totalCount: 0,
-      gitlabProjectName: '',
+      totalCount: 1,
+      gitlabProjectName: 'Loading...',
       currentMessage: 'Loading'
     })
     .write();
+  const gitlabApi = GitlabApi(encryptionKey);
   const transitionProjectDb = transitionProjectApi(encryptionKey, projectId);
   const projectMeta = await gitlabApi.Projects.show(projectId);
+  migrationDb
+    .set(
+      `processingProjects.${projectId}.gitlabProjectName`,
+      projectMeta.path_with_namespace
+    )
+    .write();
   transitionProjectDb
     .set('meta', mapKeys(projectMeta, (value, key) => camelCase(key)))
     .write();
   const issues = await gitlabApi.Issues.all({
     projectId
   });
+  migrationDb
+    .set(`processingProjects.${projectId}.totalCount`, issues.length)
+    .write();
   transitionProjectDb.set('issues', issues).write();
 
-  if (!isProcessing) {
+  if (issues.length) {
     processIssues(encryptionKey);
   }
 }
