@@ -78,7 +78,7 @@
         // As this is not designed to be multitenanted - make the env var point to _your_
         // Jira instance(s). Can take wildcards like *.atlassian.net
         "whitelist": [
-            "$JIRA_HOST_URL"
+            "$JIRA_HOST"
         ],
         // key Must be 256 bytes (32 characters)
         "lowdbEncryptionKey": "$LOWDB_CREDENTIAL_KEY"
