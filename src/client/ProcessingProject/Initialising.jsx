@@ -14,6 +14,8 @@ export default class Initialising extends Component {
               this.props.gitlabProjectId
             }") {
               isLoading
+              completedCount
+              totalCount
             }
           }
         `}
@@ -25,9 +27,19 @@ export default class Initialising extends Component {
             !data.processingProject ||
             data.processingProject.isLoading
           ) {
+            let progress = null;
+            if (data.processingProject) {
+              progress = (
+                <span>
+                  {data.processingProject.completedCount} /{' '}
+                  {data.processingProject.totalCount}{' '}
+                </span>
+              );
+            }
             return (
               <div>
-                Currently Loading and processing project issues <Spinner />
+                Currently Loading and processing project issues, {progress}
+                <Spinner />
               </div>
             );
           }
