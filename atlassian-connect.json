@@ -25,9 +25,20 @@
         "project_admin"
     ],
     "modules": {
+        "configurePage": {
+            "key": "gitlab-seneschal-setup",
+            "location": "admin_plugins_menu/gitlab-seneschal",
+            "name": {
+                "value": "Setup"
+            },
+            "url": "/admin?route=setup",
+            "conditions": [{
+                "condition": "user_is_admin"
+            }]
+        },
         "webSections": [
             {
-                "key": "gitlab-senechal",
+                "key": "gitlab-seneschal",
                 "location": "admin_plugins_menu",
                 "name": {
                     "value": "Gitlab Seneschal"
@@ -36,20 +47,26 @@
         ],
         "adminPages": [
             {
-                "key": "gitlab-senechal-migrations",
-                "location": "admin_plugins_menu/gitlab-senechal",
+                "key": "gitlab-seneschal-migrations",
+                "location": "admin_plugins_menu/gitlab-seneschal",
                 "name": {
                     "value": "Migrations"
                 },
-                "url": "/admin?route=migrations"
+                "url": "/admin?route=migrations",
+                "conditions": [{
+                    "condition": "user_is_admin"
+                }]
             },
             {
-                "key": "gitlab-senechal-webhooks",
-                "location": "admin_plugins_menu/gitlab-senechal",
+                "key": "gitlab-seneschal-webhooks",
+                "location": "admin_plugins_menu/gitlab-seneschal",
                 "name": {
                     "value": "Webhooks"
                 },
-                "url": "/admin?route=webhooks"
+                "url": "/admin?route=webhooks",
+                "conditions": [{
+                    "condition": "user_is_admin"
+                }]
             }
         ]
     },
