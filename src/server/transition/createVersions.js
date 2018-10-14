@@ -3,17 +3,28 @@ import filter from 'lodash/filter';
 import { jiraRequest } from '../apis/jira';
 import type {
   GitlabMilestoneType,
-  TransitionMappingType,
   TransitionMappingVersionType
 } from './types';
-import transitionProjectApi from '../apis/transitionProject';
+import type { DatabaseType } from '../models';
+
+async function createMappingVersion(
+  database: DatabaseType,
+  map: {
+    projectId: string,
+    milestoneId: string,
+    versionId: string
+  }
+) {
+  return await database.MigrationMappingVersions.upsert(map);
+}
 
 async function createVersion(
+  database: DatabaseType,
   jiraApi: *,
   jiraProjectId: string,
   gitlabProjectId: string,
   milestone: GitlabMilestoneType
-): TransitionMappingVersionType {
+) {
   const jiraVersion = await jiraRequest(jiraApi, 'post', '/version', {
     projectId: jiraProjectId,
     name: milestone.title,
@@ -22,59 +33,58 @@ async function createVersion(
     startDate: milestone.start_date,
     releaseDate: milestone.due_date
   });
-  // $FlowFixMe Async Promise/Object type conflict
-  return {
-    milestoneId: milestone.id,
+  return createMappingVersion(database, {
+    projectId: gitlabProjectId,
+    milestoneId: `${milestone.id}`,
     versionId: jiraVersion.id
-  };
+  });
 }
 
 export async function createVersionFromMilestone(
-  encryptionKey: string,
+  database: DatabaseType,
   jiraApi: *,
   jiraProjectId: string,
   gitlabProjectId: string,
   milestoneId: string
 ): boolean {
-  const transitionProjectDb = transitionProjectApi(
-    encryptionKey,
-    gitlabProjectId
-  );
-  const milestone = transitionProjectDb
-    .get('milestones')
-    .find({ id: milestoneId })
-    .value();
-  const newVersion = await createVersion(
+  const milestone = await database.MigrationMilestones.findOne({
+    where: {
+      projectId: gitlabProjectId,
+      id: milestoneId
+    }
+  });
+  await createVersion(
+    database,
     jiraApi,
     jiraProjectId,
     gitlabProjectId,
+    // $FlowFixMe
     milestone
   );
-  transitionProjectDb
-    .get('mapping.versions')
-    .push(newVersion)
-    .write();
-  // $FlowFixMe Async Promise/Object type conflict
+  // $FlowFixMe
   return true;
 }
 
 export default async function createVersionsFromMilestones(
-  encryptionKey: string,
+  database: DatabaseType,
   jiraApi: *,
   jiraProjectId: string,
   gitlabProjectId: string
-): TransitionMappingType {
-  const transitionProjectDb = transitionProjectApi(
-    encryptionKey,
-    gitlabProjectId
-  );
+): TransitionMappingVersionType[] {
+  const queryOptions = {
+    where: {
+      projectId: gitlabProjectId
+    }
+  };
 
-  const mapping: TransitionMappingType = transitionProjectDb
-    .get('mapping')
-    .value();
+  // $FlowFixMe
+  const versions = await database.MigrationMappingVersions.findAll(
+    queryOptions
+  );
+  const milestones = await database.MigrationMilestones.findAll(queryOptions);
   const milestonesToTransition: GitlabMilestoneType[] = filter(
-    transitionProjectDb.get('milestones').value(),
-    ({ id }) => !mapping.versions.find((version) => version.milestoneId === id)
+    milestones,
+    ({ id }) => !versions.find((version) => version.milestoneId === id)
   );
 
   const currentJiraVersions = await jiraRequest(
@@ -83,35 +93,33 @@ export default async function createVersionsFromMilestones(
     `/project/${jiraProjectId}/versions`
   );
 
-  const newVersions = await Promise.all(
-    milestonesToTransition.map(async (milestone) => {
+  await Promise.all(
+    milestonesToTransition.map((milestone) => {
       try {
         const existingJiraVersion = currentJiraVersions.find(
           ({ name }) => name === milestone.title
         );
         if (existingJiraVersion) {
-          return {
-            milestoneId: milestone.id,
+          return createMappingVersion(database, {
+            projectId: gitlabProjectId,
+            milestoneId: `${milestone.id}`,
             versionId: existingJiraVersion.id
-          };
+          });
+        } else {
+          return createVersion(
+            database,
+            jiraApi,
+            jiraProjectId,
+            gitlabProjectId,
+            milestone
+          );
         }
-        return createVersion(
-          jiraApi,
-          jiraProjectId,
-          gitlabProjectId,
-          milestone
-        );
       } catch (error) {
         console.error(error);
       }
     })
   );
 
-  transitionProjectDb
-    .get('mapping.versions')
-    .push(...newVersions)
-    .write();
-
-  // $FlowFixMe Async Promise/Object type conflict
-  return transitionProjectDb.get('mapping').value();
+  // $FlowFixMe
+  return await database.MigrationMappingVersions.findAll(queryOptions);
 }

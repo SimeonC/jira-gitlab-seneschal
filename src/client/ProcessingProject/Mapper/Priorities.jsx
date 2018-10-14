@@ -1,135 +1,201 @@
 // @flow
 import React, { Component } from 'react';
+import { Query, Mutation } from 'react-apollo';
+import gql from 'graphql-tag';
 import Select from '@atlaskit/select/dist/esm/Select';
 import { Field, FormSection } from '@atlaskit/form';
 import Button from '@atlaskit/button';
-import styled from 'styled-components';
-import sanitizeData from '../../sanitizeData';
+import Spinner from '@atlaskit/spinner';
 
 import {
+  FormRow,
   idFind,
   getDefaultOptionValue,
   getIconUrlOptionLabel,
   MinWidthFieldWrapper
 } from './utils';
 import type { TransitionMappingPriorityType } from '../../../server/transition/types';
+import sanitizeData from '../../sanitizeData';
 
 type PropsType = {
   jiraData: *,
-  data: *,
   labels: string[],
-  update: any
+  projectId: string
 };
 
-const FormRow = styled.div`
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
+const refetchQueries = ['MappingPriorities'];
 
-  & > *:not(:last-child) {
-    margin-right: 12px;
+const ListQuery = gql`
+  query MappingPriorities($gitlabProjectId: String!) {
+    projectMappingPriorities(gitlabProjectId: $gitlabProjectId) {
+      id
+      projectId
+      gitlabLabel
+      priorityId
+    }
   }
 `;
 
-export default class PrioritiesMappings extends Component<PropsType> {
-  update = (index: number, component: *) => {
-    const priorities = [...this.props.data.priorities];
-    priorities.splice(index, 1, component);
-    const updated = {
-      ...this.props.data,
-      priorities
-    };
-    this.props.update({
-      variables: {
-        mapping: sanitizeData(updated)
-      }
-    });
-  };
+const UpsertQuery = gql`
+  mutation UpsertMappingPriority($priority: MappingPriorityInput!) {
+    upsertProjectMappingPriority(priority: $priority) {
+      success
+    }
+  }
+`;
 
-  remove = (index: number) => {
-    const priorities = [...this.props.data.priorities];
-    priorities.splice(index, 1);
-    const updated = {
-      ...this.props.data,
-      priorities
-    };
-    this.props.update({
-      variables: {
-        mapping: sanitizeData(updated)
-      }
-    });
-  };
+const DeleteQuery = gql`
+  mutation DeleteMappingPriority($id: Int!) {
+    deleteProjectMappingPriority(id: $id) {
+      success
+    }
+  }
+`;
 
-  add = () => {
-    const priorities = [...this.props.data.priorities];
-    priorities.push({});
-    const updated = {
-      ...this.props.data,
-      priorities
-    };
-    this.props.update({
-      variables: {
-        mapping: sanitizeData(updated)
-      }
-    });
-  };
-
+export default class MappingPrioirities extends Component<PropsType> {
   render() {
-    const { data, jiraData, labels } = this.props;
+    const { projectId, labels, jiraData } = this.props;
     return (
-      <FormSection name="priorities">
-        <MinWidthFieldWrapper>
-          <h3>Map GitLab labels to priorities</h3>
-          {data.priorities.map((component, index) => (
-            <PriorityMapping
-              key={index}
-              tags={labels}
-              jiraData={jiraData}
-              index={index}
-              data={component}
-              update={this.update}
-              remove={this.remove}
-            />
-          ))}
-          <Button appearance="primary" onClick={this.add}>
-            Add New Priority Mapping
-          </Button>
-        </MinWidthFieldWrapper>
-      </FormSection>
+      <Query query={ListQuery} variables={{ gitlabProjectId: projectId }}>
+        {({ data, loading, error }) => {
+          if (loading) return <Spinner />;
+          if (error) {
+            console.error(error);
+            return <div>Error, check console.</div>;
+          }
+          return (
+            <FormSection name="priorities">
+              <MinWidthFieldWrapper>
+                <h3>Map GitLab labels to priorities</h3>
+                {data.projectMappingPriorities.map((priority) => (
+                  <PriorityMap
+                    key={priority.id}
+                    tags={labels}
+                    jiraData={jiraData}
+                    data={priority}
+                  />
+                ))}
+                <Mutation
+                  mutation={UpsertQuery}
+                  refetchQueries={refetchQueries}
+                >
+                  {(upsert) => (
+                    <NewPriorityMap
+                      tags={labels}
+                      jiraData={jiraData}
+                      upsert={upsert}
+                      projectId={projectId}
+                    />
+                  )}
+                </Mutation>
+              </MinWidthFieldWrapper>
+            </FormSection>
+          );
+        }}
+      </Query>
     );
   }
 }
 
+class NewPriorityMap extends Component<
+  {
+    projectId: string,
+    tags: string[],
+    jiraData: *,
+    upsert: (priority: *) => void
+  },
+  { data: { gitlabLabel?: string, priorityId?: string } }
+> {
+  constructor(props: *) {
+    super(props);
+
+    this.state = {
+      data: {
+        projectId: props.projectId
+      }
+    };
+  }
+
+  update = (priority: *) => {
+    this.setState({ data: priority });
+  };
+
+  save = () => {
+    const priority = this.state.data;
+    if (!priority.priorityId || !priority.gitlabLabel) return;
+    this.props.upsert({ variables: { priority } });
+  };
+
+  render() {
+    const { tags, jiraData } = this.props;
+    const { data } = this.state;
+    return (
+      <PriorityMapping
+        tags={tags}
+        jiraData={jiraData}
+        // $FlowFixMe
+        data={data}
+        upsert={this.update}
+        create={this.save}
+      />
+    );
+  }
+}
+
+const PriorityMap = (props: {
+  tags: string[],
+  jiraData: *,
+  data: TransitionMappingPriorityType
+}) => (
+  <Mutation mutation={UpsertQuery} refetchQueries={refetchQueries}>
+    {(upsert) => (
+      <Mutation mutation={DeleteQuery} refetchQueries={refetchQueries}>
+        {(remove) => (
+          <PriorityMapping
+            {...props}
+            upsert={(priority) =>
+              upsert({ variables: { priority: sanitizeData(priority) } })
+            }
+            remove={(priority) => remove({ variables: { id: priority.id } })}
+          />
+        )}
+      </Mutation>
+    )}
+  </Mutation>
+);
+
 type PriorityPropsType = {
-  index: number,
   tags: string[],
   jiraData: *,
   data: TransitionMappingPriorityType,
-  update: (index: number, map: *) => void,
-  remove: (index: number) => void
+  upsert: (priority: *) => void,
+  remove?: (priority: *) => void,
+  create?: () => void
 };
 
 class PriorityMapping extends Component<PriorityPropsType> {
   remove = () => {
-    this.props.remove(this.props.index);
+    if (this.props.remove) {
+      this.props.remove(this.props.data);
+    }
   };
 
-  selectComponent = (option: *) => {
-    this.props.update(this.props.index, {
+  selectPriority = (option: *) => {
+    this.props.upsert({
       ...this.props.data,
       priorityId: option.id
     });
   };
 
   selectTag = ({ value }: *) => {
-    this.props.update(this.props.index, {
+    this.props.upsert({
       ...this.props.data,
       gitlabLabel: value
     });
   };
 
   render() {
-    const { data, tags, jiraData } = this.props;
+    const { data, tags, jiraData, remove, create } = this.props;
     return (
       <FormRow>
         <Field label="Pick GitLab Tag">
@@ -144,11 +210,20 @@ class PriorityMapping extends Component<PriorityPropsType> {
             options={jiraData.jiraPriorities}
             getOptionValue={getDefaultOptionValue}
             getOptionLabel={getIconUrlOptionLabel}
-            onChange={this.selectComponent}
+            onChange={this.selectPriority}
             defaultValue={idFind(data.priorityId, jiraData.jiraPriorities)}
           />
         </Field>
-        <Button onClick={this.remove}>Delete</Button>
+        {remove && (
+          <Button appearance="danger" onClick={this.remove}>
+            Delete
+          </Button>
+        )}
+        {create && (
+          <Button appearance="primary" onClick={create}>
+            Create
+          </Button>
+        )}
       </FormRow>
     );
   }

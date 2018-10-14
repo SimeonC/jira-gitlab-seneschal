@@ -1,124 +1,187 @@
 // @flow
 import React, { Component } from 'react';
+import { Query, Mutation } from 'react-apollo';
+import gql from 'graphql-tag';
 import Select from '@atlaskit/select/dist/esm/Select';
 import { Field, FormSection } from '@atlaskit/form';
 import Button from '@atlaskit/button';
-import styled from 'styled-components';
-import sanitizeData from '../../sanitizeData';
+import Spinner from '@atlaskit/spinner';
 
 import {
+  FormRow,
   idFind,
   getDefaultOptionValue,
   getIconUrlOptionLabel,
   getStatusOptionLabel,
   MinWidthFieldWrapper
 } from './utils';
-import type {
-  TransitionMappingStatusType,
-  TransitionMappingType
-} from '../../../server/transition/types';
+import type { TransitionMappingStatusType } from '../../../server/transition/types';
+import sanitizeData from '../../sanitizeData';
 
 type PropsType = {
   jiraData: *,
-  data: TransitionMappingType,
   labels: string[],
-  update: any
+  projectId: string
 };
 
 type StateType = {
   selectedIssueType?: *
 };
 
-const FormRow = styled.div`
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
+const refetchQueries = ['MappingStatuses'];
 
-  & > *:not(:last-child) {
-    margin-right: 12px;
+const ListQuery = gql`
+  query MappingStatuses($gitlabProjectId: String!) {
+    projectMappingStatuses(gitlabProjectId: $gitlabProjectId) {
+      id
+      projectId
+      gitlabLabel
+      issueTypeId
+      statusId
+    }
+  }
+`;
+
+const UpsertQuery = gql`
+  mutation UpsertMappingStatus($status: MappingStatusesInput!) {
+    upsertProjectMappingStatus(status: $status) {
+      success
+    }
+  }
+`;
+
+const DeleteQuery = gql`
+  mutation DeleteMappingStatus($id: Int!) {
+    deleteProjectMappingStatus(id: $id) {
+      success
+    }
   }
 `;
 
 export default class Statuses extends Component<PropsType> {
-  update = (index: number, status: *) => {
-    const updated = {
-      ...this.props.data,
-      statuses: [
-        ...this.props.data.statuses.slice(0, index),
-        status,
-        ...this.props.data.statuses.slice(index + 1)
-      ]
-    };
-    this.props.update({
-      variables: {
-        mapping: sanitizeData(updated)
-      }
-    });
-  };
-
-  remove = (index: number) => {
-    const updated = {
-      ...this.props.data,
-      statuses: [
-        ...this.props.data.statuses.slice(0, index),
-        ...this.props.data.statuses.slice(index + 1)
-      ]
-    };
-    this.props.update({
-      variables: {
-        mapping: sanitizeData(updated)
-      }
-    });
-  };
-
-  add = () => {
-    const updated = {
-      ...this.props.data,
-      statuses: [...this.props.data.statuses, {}]
-    };
-    this.props.update({
-      variables: {
-        mapping: sanitizeData(updated)
-      }
-    });
-  };
-
   render() {
-    const { data, jiraData, labels } = this.props;
+    const { projectId, jiraData, labels } = this.props;
     return (
-      <FormSection name="issue-types">
-        <MinWidthFieldWrapper>
-          <h3>Map GitLab labels to issue statuses</h3>
-          {data.statuses.map((status, index) => (
-            <Status
-              key={index}
-              tags={labels}
-              jiraData={jiraData}
-              index={index}
-              data={status}
-              update={this.update}
-              remove={this.remove}
-            />
-          ))}
-          <Button appearance="primary" onClick={this.add}>
-            Add New Status Mapping
-          </Button>
-        </MinWidthFieldWrapper>
-      </FormSection>
+      <Query query={ListQuery} variables={{ gitlabProjectId: projectId }}>
+        {({ data, loading, error }) => {
+          if (loading) return <Spinner />;
+          if (error) {
+            console.error(error);
+            return <div>Error, check console.</div>;
+          }
+          return (
+            <FormSection name="issue-types">
+              <MinWidthFieldWrapper>
+                <h3>Map GitLab labels to issue statuses</h3>
+                {data.projectMappingStatuses.map((status) => (
+                  <StatusMap
+                    key={status.id}
+                    tags={labels}
+                    jiraData={jiraData}
+                    data={status}
+                  />
+                ))}
+                <Mutation
+                  mutation={UpsertQuery}
+                  refetchQueries={refetchQueries}
+                >
+                  {(upsert) => (
+                    <NewStatusMap
+                      tags={labels}
+                      jiraData={jiraData}
+                      upsert={upsert}
+                      projectId={projectId}
+                    />
+                  )}
+                </Mutation>
+              </MinWidthFieldWrapper>
+            </FormSection>
+          );
+        }}
+      </Query>
     );
   }
 }
 
+class NewStatusMap extends Component<
+  {
+    projectId: string,
+    tags: string[],
+    jiraData: *,
+    upsert: (status: *) => void
+  },
+  { data: { gitlabLabel?: string, issueTypeId?: string, statusId?: string } }
+> {
+  constructor(props: *) {
+    super(props);
+
+    this.state = {
+      data: {
+        projectId: props.projectId
+      }
+    };
+  }
+
+  update = (status: *) => {
+    this.setState({ data: status });
+  };
+
+  save = () => {
+    const status = this.state.data;
+    if (!status.gitlabLabel || !status.issueTypeId || !status.statusId) {
+      return;
+    }
+    this.props.upsert({ variables: { status } });
+  };
+
+  render() {
+    const { tags, jiraData } = this.props;
+    const { data } = this.state;
+    return (
+      <StatusMapping
+        tags={tags}
+        jiraData={jiraData}
+        // $FlowFixMe
+        data={data}
+        upsert={this.update}
+        create={this.save}
+      />
+    );
+  }
+}
+
+const StatusMap = (props: {
+  tags: string[],
+  jiraData: *,
+  data: TransitionMappingStatusType
+}) => (
+  <Mutation mutation={UpsertQuery} refetchQueries={refetchQueries}>
+    {(upsert) => (
+      <Mutation mutation={DeleteQuery} refetchQueries={refetchQueries}>
+        {(remove) => (
+          <StatusMapping
+            {...props}
+            upsert={(status) =>
+              upsert({ variables: { status: sanitizeData(status) } })
+            }
+            remove={(status) => remove({ variables: { id: status.id } })}
+          />
+        )}
+      </Mutation>
+    )}
+  </Mutation>
+);
+
 type StatusPropsType = {
-  index: number,
   tags: string[],
   jiraData: *,
   data: TransitionMappingStatusType,
-  update: (index: number, issueMap: *) => void,
-  remove: (index: number) => void
+  upsert: (issueType: *) => void,
+  remove?: (issueType: *) => void,
+  create?: () => void
 };
 
-class Status extends Component<StatusPropsType, StateType> {
+class StatusMapping extends Component<StatusPropsType, StateType> {
   constructor(props: StatusPropsType) {
     super(props);
     this.state = {
@@ -131,35 +194,37 @@ class Status extends Component<StatusPropsType, StateType> {
   }
 
   remove = () => {
-    this.props.remove(this.props.index);
+    if (this.props.remove) {
+      this.props.remove(this.props.data);
+    }
   };
 
   selectIssueType = (option: *) => {
     this.setState({
       selectedIssueType: option
     });
-    this.props.update(this.props.index, {
+    this.props.upsert({
       ...this.props.data,
       issueTypeId: option.id
     });
   };
 
   selectIssueStatus = (option: *) => {
-    this.props.update(this.props.index, {
+    this.props.upsert({
       ...this.props.data,
       statusId: option.id
     });
   };
 
   selectTag = ({ value }: *) => {
-    this.props.update(this.props.index, {
+    this.props.upsert({
       ...this.props.data,
       gitlabLabel: value
     });
   };
 
   render() {
-    const { data, tags, jiraData } = this.props;
+    const { data, tags, jiraData, remove, create } = this.props;
     const { selectedIssueType } = this.state;
     let selectedIssueTypeStatuses = [];
     if (selectedIssueType) {
@@ -196,7 +261,16 @@ class Status extends Component<StatusPropsType, StateType> {
             )}
           />
         </Field>
-        <Button onClick={this.remove}>Delete</Button>
+        {remove && (
+          <Button appearance="danger" onClick={this.remove}>
+            Delete
+          </Button>
+        )}
+        {create && (
+          <Button appearance="primary" onClick={create}>
+            Create
+          </Button>
+        )}
       </FormRow>
     );
   }

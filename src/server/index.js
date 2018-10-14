@@ -9,28 +9,16 @@ import fs from 'fs-extra';
 import ac from 'atlassian-connect-express';
 import http from 'http';
 import os from 'os';
-import expressGraphql from 'express-graphql';
-import { makeExecutableSchema } from 'graphql-tools';
 import path from 'path';
-import rootSchema from './schema.graphql';
-import gitlabSchema from './apis/gitlab.graphql';
-import jiraSchema from './apis/jira.graphql';
-import transitionProjectSchema from './apis/transitionProject.graphql';
-import webhooksSchema from './apis/webhooks.graphql';
-import root from './rootResolver';
+import initGraphQL from './initGraphQL';
 import webhooksSetup from './webhooks';
+import modelsSetup from './models';
+import { processQueue as processWebhookQueue } from './webhooks/queue';
+import { processQueue as processMigrationQueue } from './transition/migrationQueue';
 
 const reactIndexFile = fs.readFileSync(
   path.join(__dirname, '../../build/client', 'index.html')
 );
-
-const schemas = [
-  rootSchema,
-  gitlabSchema,
-  jiraSchema,
-  transitionProjectSchema,
-  webhooksSchema
-];
 
 // Password Must be 256 bytes (32 characters)
 
@@ -38,7 +26,7 @@ const app = express();
 
 const addon = ac(app);
 
-const encryptionKey = addon.config.lowdbEncryptionKey();
+const dbSetupPromise = modelsSetup(addon.schema);
 
 const port = addon.config.port();
 const devEnv = app.get('env') === 'development';
@@ -120,19 +108,9 @@ if (devEnv) {
   app.use(errorHandler());
 }
 
-app.use(
-  '/graphql',
-  addon.checkValidToken(),
-  expressGraphql({
-    schema: makeExecutableSchema({
-      typeDefs: schemas,
-      resolvers: root(encryptionKey, addon)
-    }),
-    graphiql: true
-  })
-);
+app.use('/graphql', addon.checkValidToken(), initGraphQL(addon));
 
-webhooksSetup(encryptionKey, addon, app);
+webhooksSetup(addon, app);
 
 // Root route. This route will serve the `atlassian-connect.json` unless the
 // documentation url inside `atlassian-connect.json` is set
@@ -157,8 +135,20 @@ app.get('/health', (req, res) => {
 });
 
 // Boot the damn thing
-http.createServer(app).listen(port, function() {
-  console.log('Add-on server running at http://' + os.hostname() + ':' + port);
-  // Enables auto registration/de-registration of add-ons into a host in dev mode
-  if (devEnv) addon.register();
-});
+dbSetupPromise
+  .then(() => {
+    // start the process running to pick up any that were left over after last shutdown.
+    // Wait 1 minute just in case - there's startup stuff I can't manage to get around
+    setTimeout(() => {
+      processWebhookQueue(addon);
+      processMigrationQueue(addon);
+    }, 60000);
+    http.createServer(app).listen(port, function() {
+      console.log(
+        'Add-on server running at http://' + os.hostname() + ':' + port
+      );
+      // Enables auto registration/de-registration of add-ons into a host in dev mode
+      if (devEnv) addon.register();
+    });
+  })
+  .catch((error) => console.error(error));

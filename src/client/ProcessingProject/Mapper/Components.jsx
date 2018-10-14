@@ -1,138 +1,201 @@
 // @flow
 import React, { Component } from 'react';
+import { Query, Mutation } from 'react-apollo';
+import gql from 'graphql-tag';
 import Select from '@atlaskit/select/dist/esm/Select';
 import { Field, FormSection } from '@atlaskit/form';
 import Button from '@atlaskit/button';
-import styled from 'styled-components';
-import sanitizeData from '../../sanitizeData';
+import Spinner from '@atlaskit/spinner';
 
 import {
+  FormRow,
   idFind,
   getDefaultOptionValue,
   getComponentOptionLabel,
   MinWidthFieldWrapper
 } from './utils';
-import type {
-  TransitionMappingComponentType,
-  TransitionMappingType
-} from '../../../server/transition/types';
+import type { TransitionMappingComponentType } from '../../../server/transition/types';
+import sanitizeData from '../../sanitizeData';
 
 type PropsType = {
   jiraData: *,
-  data: TransitionMappingType,
   labels: string[],
-  update: any
+  projectId: string
 };
 
-const FormRow = styled.div`
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
+const refetchQueries = ['MappingComponents'];
 
-  & > *:not(:last-child) {
-    margin-right: 12px;
+const ListQuery = gql`
+  query MappingComponents($gitlabProjectId: String!) {
+    projectMappingComponents(gitlabProjectId: $gitlabProjectId) {
+      id
+      projectId
+      gitlabLabel
+      componentId
+    }
   }
 `;
 
-export default class ComponentMappings extends Component<PropsType> {
-  update = (index: number, component: *) => {
-    const components = [...this.props.data.components];
-    components.splice(index, 1, component);
-    const updated = {
-      ...this.props.data,
-      components
-    };
-    this.props.update({
-      variables: {
-        mapping: sanitizeData(updated)
-      }
-    });
-  };
+const UpsertQuery = gql`
+  mutation UpsertMappingComponent($component: MappingComponentInput!) {
+    upsertProjectMappingComponent(component: $component) {
+      success
+    }
+  }
+`;
 
-  remove = (index: number) => {
-    const components = [...this.props.data.components];
-    components.splice(index, 1);
-    const updated = {
-      ...this.props.data,
-      components
-    };
-    this.props.update({
-      variables: {
-        mapping: sanitizeData(updated)
-      }
-    });
-  };
+const DeleteQuery = gql`
+  mutation DeleteMappingComponent($id: Int!) {
+    deleteProjectMappingComponent(id: $id) {
+      success
+    }
+  }
+`;
 
-  add = () => {
-    const components = [...this.props.data.components];
-    components.push({});
-    const updated = {
-      ...this.props.data,
-      components
-    };
-    this.props.update({
-      variables: {
-        mapping: sanitizeData(updated)
-      }
-    });
-  };
-
+export default class MappingComponents extends Component<PropsType> {
   render() {
-    const { data, jiraData, labels } = this.props;
+    const { projectId, labels, jiraData } = this.props;
     return (
-      <FormSection name="components">
-        <MinWidthFieldWrapper>
-          <h3>Map GitLab labels to components</h3>
-          {data.components.map((component, index) => (
-            <ComponentMapping
-              key={index}
-              tags={labels}
-              jiraData={jiraData}
-              index={index}
-              data={component}
-              update={this.update}
-              remove={this.remove}
-            />
-          ))}
-          <Button appearance="primary" onClick={this.add}>
-            Add New Component Mapping
-          </Button>
-        </MinWidthFieldWrapper>
-      </FormSection>
+      <Query query={ListQuery} variables={{ gitlabProjectId: projectId }}>
+        {({ data, loading, error }) => {
+          if (loading) return <Spinner />;
+          if (error) {
+            console.error(error);
+            return <div>Error, check console.</div>;
+          }
+          return (
+            <FormSection name="components">
+              <MinWidthFieldWrapper>
+                <h3>Map GitLab labels to components</h3>
+                {data.projectMappingComponents.map((component) => (
+                  <ComponentMap
+                    key={component.id}
+                    tags={labels}
+                    jiraData={jiraData}
+                    data={component}
+                  />
+                ))}
+                <Mutation
+                  mutation={UpsertQuery}
+                  refetchQueries={refetchQueries}
+                >
+                  {(upsert) => (
+                    <NewComponentMap
+                      tags={labels}
+                      jiraData={jiraData}
+                      upsert={upsert}
+                      projectId={projectId}
+                    />
+                  )}
+                </Mutation>
+              </MinWidthFieldWrapper>
+            </FormSection>
+          );
+        }}
+      </Query>
     );
   }
 }
 
-type IssuePropsType = {
-  index: number,
+class NewComponentMap extends Component<
+  {
+    projectId: string,
+    tags: string[],
+    jiraData: *,
+    upsert: (component: *) => void
+  },
+  { data: { gitlabLabel?: string, componentId?: string } }
+> {
+  constructor(props: *) {
+    super(props);
+
+    this.state = {
+      data: {
+        projectId: props.projectId
+      }
+    };
+  }
+
+  update = (component: *) => {
+    this.setState({ data: component });
+  };
+
+  save = () => {
+    const component = this.state.data;
+    if (!component.componentId || !component.gitlabLabel) return;
+    this.props.upsert({ variables: { component } });
+  };
+
+  render() {
+    const { tags, jiraData } = this.props;
+    const { data } = this.state;
+    return (
+      <ComponentMapping
+        tags={tags}
+        jiraData={jiraData}
+        // $FlowFixMe
+        data={data}
+        upsert={this.update}
+        create={this.save}
+      />
+    );
+  }
+}
+
+const ComponentMap = (props: {
+  tags: string[],
+  jiraData: *,
+  data: TransitionMappingComponentType
+}) => (
+  <Mutation mutation={UpsertQuery} refetchQueries={refetchQueries}>
+    {(upsert) => (
+      <Mutation mutation={DeleteQuery} refetchQueries={refetchQueries}>
+        {(remove) => (
+          <ComponentMapping
+            {...props}
+            upsert={(component) =>
+              upsert({ variables: { component: sanitizeData(component) } })
+            }
+            remove={(component) => remove({ variables: { id: component.id } })}
+          />
+        )}
+      </Mutation>
+    )}
+  </Mutation>
+);
+
+type ComponentPropsType = {
   tags: string[],
   jiraData: *,
   data: TransitionMappingComponentType,
-  update: (index: number, issueMap: *) => void,
-  remove: (index: number) => void
+  upsert: (component: *) => void,
+  remove?: (component: *) => void,
+  create?: () => void
 };
 
-class ComponentMapping extends Component<IssuePropsType> {
+class ComponentMapping extends Component<ComponentPropsType> {
   remove = () => {
-    this.props.remove(this.props.index);
+    if (this.props.remove) {
+      this.props.remove(this.props.data);
+    }
   };
 
   selectComponent = (option: *) => {
-    this.props.update(this.props.index, {
+    this.props.upsert({
       ...this.props.data,
       componentId: option.id
     });
   };
 
   selectTag = ({ value }: *) => {
-    this.props.update(this.props.index, {
+    this.props.upsert({
       ...this.props.data,
       gitlabLabel: value
     });
   };
 
   render() {
-    const { data, tags, jiraData } = this.props;
+    const { data, tags, jiraData, remove, create } = this.props;
     return (
       <FormRow>
         <Field label="Pick GitLab Tag">
@@ -151,7 +214,16 @@ class ComponentMapping extends Component<IssuePropsType> {
             defaultValue={idFind(data.componentId, jiraData.jiraComponents)}
           />
         </Field>
-        <Button onClick={this.remove}>Delete</Button>
+        {remove && (
+          <Button appearance="danger" onClick={this.remove}>
+            Delete
+          </Button>
+        )}
+        {create && (
+          <Button appearance="primary" onClick={create}>
+            Create
+          </Button>
+        )}
       </FormRow>
     );
   }

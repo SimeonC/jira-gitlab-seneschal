@@ -16,45 +16,53 @@ export type GitlabMilestoneType = {
 };
 
 export type TransitionMappingComponentType = {
+  id: number,
   gitlabLabel: string,
   componentId: string
 };
 
 export type TransitionMappingVersionType = {
+  id: number,
   milestoneId: string,
   versionId: string
 };
 
 export type TransitionMappingIssueTypeType = {
+  id: number,
   gitlabLabel: string,
   closedStatusId: string,
   issueTypeId: string
 };
 
 export type TransitionMappingStatusType = {
+  id: number,
   gitlabLabel: string,
   issueTypeId: string,
   statusId: string
 };
 
 export type TransitionMappingPriorityType = {
+  id: number,
   gitlabLabel: string,
   priorityId: string
 };
 
 export type TransitionMappingType = {
-  baseValues: {
-    project: ?{
-      id: string
-    },
-    components?: IdType[]
-  },
+  jiraProjectId: string,
+  defaultComponentIds: [string],
   defaultIssueTypeId: string,
   defaultIssueTypeClosedStatusId: string,
-  defaultResolutionId: string,
-  issueTypes: TransitionMappingIssueTypeType[],
-  statuses: TransitionMappingStatusType[],
-  versions: TransitionMappingVersionType[],
-  components: TransitionMappingComponentType[],
-  priorities: TransitionMappingPriorityType[]
+  defaultResolutionId: string
+};
+
+export type ProcessingProjectType = {
+  projectId: string,
+  meta: *,
+  isProcessing: boolean,
+  isLoading: boolean,
+  completedCount: number,
+  failedCount: number,
+  totalCount: number,
+  currentMessage: string,
+  currentIssueIid: string
 };

@@ -2,6 +2,16 @@ import React from 'react';
 import styled from 'styled-components';
 import { Status } from '@atlaskit/status';
 
+export const FormRow = styled.div`
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+
+  & > *:not(:last-child) {
+    margin-right: 12px;
+  }
+`;
+
 export const MinWidthFieldWrapper = styled.div`
   label {
     min-width: 180px;

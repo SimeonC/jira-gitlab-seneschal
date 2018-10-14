@@ -57,44 +57,16 @@ const mainQuery = gql`
       title
       description
       state
-      due_date
-      start_date
-      web_url
+      dueDate
+      startDate
+      webUrl
     }
     projectMapping(gitlabProjectId: $gitlabProjectId) {
-      baseValues {
-        project {
-          id
-        }
-        components {
-          id
-        }
-      }
+      jiraProjectId
+      defaultComponentIds
       defaultIssueTypeId
       defaultIssueTypeClosedStatusId
       defaultResolutionId
-      issueTypes {
-        gitlabLabel
-        closedStatusId
-        issueTypeId
-      }
-      statuses {
-        gitlabLabel
-        issueTypeId
-        statusId
-      }
-      versions {
-        milestoneId
-        versionId
-      }
-      components {
-        gitlabLabel
-        componentId
-      }
-      priorities {
-        gitlabLabel
-        priorityId
-      }
     }
   }
 `;
@@ -114,7 +86,7 @@ class JiraProjectSelector extends Component<
     this.state = {
       jiraProjectId: null
     };
-    const jiraProjectId = get(props, 'mapping.baseValues.project.id');
+    const jiraProjectId = get(props, 'mapping.jiraProjectId');
     if (jiraProjectId) {
       this.state = {
         jiraProjectId,
@@ -131,12 +103,7 @@ class JiraProjectSelector extends Component<
       variables: {
         mapping: sanitizeData({
           ...this.props.mapping,
-          baseValues: {
-            ...this.props.mapping.baseValues,
-            project: {
-              id: option.id
-            }
-          }
+          jiraProjectId: option.id
         })
       }
     });
@@ -166,7 +133,8 @@ class MappingEditor extends Component<{
   update: UpdateMappingFunctionType,
   labels: string[],
   data: *,
-  jiraData: *
+  jiraData: *,
+  projectId: string
 }> {
   update = ({ updated_src }) => {
     this.props.update({
@@ -179,10 +147,7 @@ class MappingEditor extends Component<{
   selectDefaultComponents = (options) => {
     const updated = {
       ...this.props.data,
-      baseValues: {
-        ...this.props.data.baseValues,
-        components: options.map((option) => ({ id: option.id }))
-      }
+      defaultComponentIds: options.map((option) => option.id)
     };
     this.props.update({
       variables: {
@@ -192,7 +157,7 @@ class MappingEditor extends Component<{
   };
 
   render() {
-    const { data, labels, jiraData, update } = this.props;
+    const { projectId, data, labels, jiraData, update } = this.props;
     return (
       <Form name="mapping">
         <Field label="Select default components to apply to all issues">
@@ -202,36 +167,16 @@ class MappingEditor extends Component<{
             getOptionValue={getDefaultOptionValue}
             getOptionLabel={getComponentOptionLabel}
             onChange={this.selectDefaultComponents}
-            defaultValue={(data.baseValues.components || []).map(({ id }) =>
+            defaultValue={(data.defaultComponentIds || []).map((id) =>
               idFind(id, jiraData.jiraComponents)
             )}
           />
         </Field>
         <DefaultIssue jiraData={jiraData} data={data} update={update} />
-        <IssueTypes
-          jiraData={jiraData}
-          data={data}
-          labels={labels}
-          update={update}
-        />
-        <Statuses
-          jiraData={jiraData}
-          data={data}
-          labels={labels}
-          update={update}
-        />
-        <Components
-          jiraData={jiraData}
-          data={data}
-          labels={labels}
-          update={update}
-        />
-        <Priorities
-          jiraData={jiraData}
-          data={data}
-          labels={labels}
-          update={update}
-        />
+        <IssueTypes projectId={projectId} jiraData={jiraData} labels={labels} />
+        <Statuses projectId={projectId} jiraData={jiraData} labels={labels} />
+        <Components projectId={projectId} jiraData={jiraData} labels={labels} />
+        <Priorities projectId={projectId} jiraData={jiraData} labels={labels} />
         <h4>Debug Details</h4>
         <ReactJson
           src={sanitizeData(data)}
@@ -277,13 +222,6 @@ class Mapping extends Component<{
     }));
   };
 
-  updateCacheFromMilestoneCreation = (store, { data }) => {
-    this.updateMappingCache(store, (oldData) => {
-      oldData.projectMapping.versions = data.migrateMilestones.versions;
-      return oldData;
-    });
-  };
-
   redirectAfterProcessing = () => {
     this.props.history.push('/migrations');
   };
@@ -295,39 +233,11 @@ class Mapping extends Component<{
         mutation={gql`
           mutation UpdateMappingData($mapping: TransitionProjectMappingInput!) {
             setProjectMapping(gitlabProjectId: "${gitlabProjectId}", mapping: $mapping) {
-              baseValues {
-                project {
-                  id
-                }
-                components {
-                  id
-                }
-              }
+              jiraProjectId
+              defaultComponentIds
               defaultIssueTypeId
               defaultIssueTypeClosedStatusId
               defaultResolutionId
-              issueTypes {
-                gitlabLabel
-                closedStatusId
-                issueTypeId
-              }
-              statuses {
-                gitlabLabel
-                issueTypeId
-                statusId
-              }
-              versions {
-                milestoneId
-                versionId
-              }
-              components {
-                gitlabLabel
-                componentId
-              }
-              priorities {
-                gitlabLabel
-                priorityId
-              }
             }
           }
         `}
@@ -394,36 +304,6 @@ class Mapping extends Component<{
                   }
                   return (
                     <div>
-                      <Mutation
-                        mutation={gql`
-                          mutation CreateVersions(
-                            $jiraProjectId: String!
-                            $gitlabProjectId: String!
-                          ) {
-                            migrateMilestones(
-                              gitlabProjectId: $gitlabProjectId
-                              jiraProjectId: $jiraProjectId
-                            ) {
-                              versions {
-                                milestoneId
-                                versionId
-                              }
-                            }
-                          }
-                        `}
-                        variables={{ jiraProjectId, gitlabProjectId }}
-                        update={this.updateCacheFromMilestoneCreation}
-                      >
-                        {(createVersions, { loading }) => (
-                          <Button
-                            appearance="primary"
-                            isLoading={loading}
-                            onClick={createVersions}
-                          >
-                            Auto Create & Link Versions
-                          </Button>
-                        )}
-                      </Mutation>
                       <Columns>
                         <Column>
                           <Mutation
@@ -441,7 +321,7 @@ class Mapping extends Component<{
                             variables={{ gitlabProjectId }}
                             update={this.redirectAfterProcessing}
                           >
-                            {(startProcess, { loading }) => (
+                            {(startProcess, { loading, error }) => (
                               <div>
                                 <Button
                                   appearance="primary"
@@ -450,10 +330,17 @@ class Mapping extends Component<{
                                 >
                                   Run Transformation
                                 </Button>
+                                {error && (
+                                  <ReactJson
+                                    src={sanitizeData(error)}
+                                    displayDataTypes={false}
+                                  />
+                                )}
                               </div>
                             )}
                           </Mutation>
                           <MappingEditor
+                            projectId={gitlabProjectId}
                             update={updateMapping}
                             data={data.projectMapping}
                             labels={data.projectLabels}

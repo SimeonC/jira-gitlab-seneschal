@@ -16,8 +16,8 @@ import Spinner from '@atlaskit/spinner';
 import Select from '@atlaskit/select';
 import sanitizeData from './sanitizeData';
 
-const metadataQuery = gql`
-  {
+const MetadataQuery = gql`
+  query WebhookMetadata {
     getWebhookMetadata {
       transitionKeywords
       transitionMap {
@@ -29,6 +29,10 @@ const metadataQuery = gql`
         }
       }
     }
+  }
+`;
+const JiraQuery = gql`
+  query JiraQuery {
     jiraProjects {
       id
       key
@@ -54,7 +58,13 @@ const getStatusOptionLabel = (option) => (
 );
 
 class WebhookSettings extends Component<
-  { saveMetadata: any, data: *, isSaving: boolean },
+  {
+    saveMetadata: any,
+    createTransition: any,
+    data: *,
+    jiraData: *,
+    isSaving: boolean
+  },
   {
     transitionKeywords?: string[],
     jiraProjectKey?: string,
@@ -104,64 +114,35 @@ class WebhookSettings extends Component<
       newMergeStatus = {},
       newCloseStatus = {}
     } = this.state;
-    const { saveMetadata } = this.props;
+    const { createTransition } = this.props;
     if (!jiraProjectKey) return;
-    const metadata = this.props.data.getWebhookMetadata;
-    metadata.transitionMap.push({
+    const newTransition = {
       jiraProjectKey,
       transitionStatusIds: {
         mergeId: newMergeStatus.id,
         openId: newOpenStatus.id,
         closeId: newCloseStatus.id
       }
-    });
-    saveMetadata({
-      variables: {
-        metadata: sanitizeData(metadata)
-      },
-      update: (store, { data: { setWebhookMetadata } }) => {
-        const originalData = store.readQuery({
-          query: metadataQuery
-        });
-        store.writeQuery({
-          query: metadataQuery,
-          data: {
-            ...originalData,
-            getWebhookMetadata: setWebhookMetadata
-          }
-        });
-      }
+    };
+    createTransition({
+      variables: sanitizeData(newTransition)
     });
   };
 
   saveTransitionKeywords = () => {
     const { transitionKeywords } = this.state;
     const { saveMetadata } = this.props;
-    const metadata = this.props.data.getWebhookMetadata;
-    metadata.transitionKeywords = transitionKeywords;
     saveMetadata({
       variables: {
-        metadata: sanitizeData(metadata)
-      },
-      update: (store, { data: { setWebhookMetadata } }) => {
-        const originalData = store.readQuery({
-          query: metadataQuery
-        });
-        store.writeQuery({
-          query: metadataQuery,
-          data: {
-            ...originalData,
-            getWebhookMetadata: setWebhookMetadata
-          }
-        });
+        transitionKeywords
       }
     });
   };
 
   render() {
-    const { data, isSaving } = this.props;
-    const projects = data.jiraProjects;
-    const statuses = data.jiraStatuses;
+    const { data, jiraData, isSaving } = this.props;
+    const projects = jiraData.jiraProjects;
+    const statuses = jiraData.jiraStatuses;
     const { transitionMap, transitionKeywords } = data.getWebhookMetadata;
     const availableProjects = [];
     projects.forEach((project) => {
@@ -311,41 +292,62 @@ class WebhookSettings extends Component<
 export default () => (
   <Mutation
     mutation={gql`
-      mutation SetMetadata($metadata: WebhookMetadataInput!) {
-        setWebhookMetadata(metadata: $metadata) {
-          transitionKeywords
-          transitionMap {
-            jiraProjectKey
-            transitionStatusIds {
-              mergeId
-              openId
-              closeId
-            }
-          }
+      mutation SetMetadata($transitionKeywords: [String!]) {
+        setWebhookMetadata(transitionKeywords: $transitionKeywords) {
+          success
         }
       }
     `}
+    refetchQueries={['WebhookMetadata']}
   >
     {(saveMetadata, { loading: isSaving, error: saveError }) => (
-      <Query query={metadataQuery}>
-        {({ data, loading, error }) => {
-          if (loading) {
-            return <Spinner />;
+      <Mutation
+        mutation={gql`
+          mutation SaveTransition(
+            $jiraProjectKey: String!
+            $transitionStatusIds: WebhookTransitionsInput!
+          ) {
+            upsertWebhookTransitionMap(
+              jiraProjectKey: $jiraProjectKey
+              transitionStatusIds: $transitionStatusIds
+            ) {
+              success
+            }
           }
-          if (error) {
-            console.error(error);
-            return 'Error Happened';
-          }
-          return (
-            <WebhookSettings
-              saveMetadata={saveMetadata}
-              data={data}
-              isSaving={isSaving}
-              error={saveError}
-            />
-          );
-        }}
-      </Query>
+        `}
+        refetchQueries={['WebhookMetadata']}
+      >
+        {(
+          createTransition,
+          { loading: isSavingTransition, error: saveTransitionError }
+        ) => (
+          <Query query={JiraQuery}>
+            {({ data: jiraData, loading: jiraLoading, error: jiraError }) => (
+              <Query query={MetadataQuery}>
+                {({ data, loading, error }) => {
+                  if (loading || jiraLoading) {
+                    return <Spinner />;
+                  }
+                  if (error || jiraError) {
+                    console.error(error || jiraError);
+                    return 'Error Happened';
+                  }
+                  return (
+                    <WebhookSettings
+                      saveMetadata={saveMetadata}
+                      createTransition={createTransition}
+                      data={data}
+                      jiraData={jiraData}
+                      isSaving={isSaving || isSavingTransition}
+                      error={saveError || saveTransitionError}
+                    />
+                  );
+                }}
+              </Query>
+            )}
+          </Query>
+        )}
+      </Mutation>
     )}
   </Mutation>
 );

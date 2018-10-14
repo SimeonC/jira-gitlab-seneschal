@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { Component, Fragment } from 'react';
 import styled, { css } from 'styled-components';
 import { Query, Mutation } from 'react-apollo';
 import gql from 'graphql-tag';
@@ -18,6 +18,10 @@ const fullWidthCss = css`
 const Row = styled.div`
   ${fullWidthCss};
   align-items: center;
+`;
+
+const ErrorCount = styled.span`
+  color: red;
 `;
 
 const SelectWrapper = styled.div`
@@ -62,8 +66,11 @@ const processingQuery = gql`
       projectId
       isProcessing
       isLoading
-      gitlabProjectName
+      meta {
+        nameWithNamespace
+      }
       completedCount
+      failedCount
       totalCount
       currentMessage
       currentIssueIid
@@ -81,7 +88,7 @@ const RemoveButton = ({ project }: *) => (
     refetchQueries={['ProcessingStatuses']}
   >
     {(remove, { loading }) => (
-      <Button onClick={remove} isLoading={loading}>
+      <Button appearance="danger" onClick={remove} isLoading={loading}>
         Remove
       </Button>
     )}
@@ -100,6 +107,9 @@ const renderProjectStatus = (project) => {
   if (project.completedCount >= project.totalCount) {
     return <span>Processed</span>;
   }
+  if (project.completedCount + project.failedCount >= project.totalCount) {
+    return <span>Processed With Failures ({project.failedCount})</span>;
+  }
   if (project.isProcessing) {
     return (
       <span>
@@ -117,19 +127,20 @@ const renderProjectStatus = (project) => {
 };
 
 const renderProjectProgress = (project) => {
+  let loadingFragment = null;
+  let failureFragment = null;
   if (
     project.isLoading ||
-    (project.isProcessing && project.completedCount < project.totalCount)
+    (project.isProcessing && project.completedCount + project.failedCount < project.totalCount)
   ) {
-    return (
-      <span>
-        <Spinner /> {project.completedCount} / {project.totalCount}
-      </span>
-    );
+    loadingFragment = <Fragment><Spinner /> </Fragment>;
+  }
+  if (project.failedCount > 0) {
+    failureFragment = <Fragment> (<ErrorCount>{project.failedCount}</ErrorCount>)</Fragment>;
   }
   return (
     <span>
-      {project.completedCount} / {project.totalCount}
+      {loadingFragment}{project.completedCount}{failureFragment} / {project.totalCount}
     </span>
   );
 };
@@ -182,7 +193,7 @@ export default class Migrations extends Component {
                     (project) =>
                       project.isLoading ||
                       (project.isProcessing &&
-                        project.completedCount < project.totalCount)
+                        project.completedCount + project.failedCount < project.totalCount)
                   )
                 ) {
                   stopPolling();
@@ -216,7 +227,7 @@ export default class Migrations extends Component {
                       cells: [
                         {
                           key: 'name',
-                          content: project.gitlabProjectName
+                          content: project.meta.nameWithNamespace
                         },
                         {
                           key: 'progress',

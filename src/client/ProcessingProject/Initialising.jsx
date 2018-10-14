@@ -15,6 +15,7 @@ export default class Initialising extends Component {
             }") {
               isLoading
               completedCount
+              failedCount
               totalCount
             }
           }
@@ -31,8 +32,9 @@ export default class Initialising extends Component {
             if (data.processingProject) {
               progress = (
                 <span>
-                  {data.processingProject.completedCount} /{' '}
-                  {data.processingProject.totalCount}{' '}
+                  {data.processingProject.completedCount +
+                    data.processingProject.failedCount}{' '}
+                  / {data.processingProject.totalCount}{' '}
                 </span>
               );
             }

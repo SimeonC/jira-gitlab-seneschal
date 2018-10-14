@@ -1,124 +1,198 @@
 // @flow
 import React, { Component } from 'react';
+import { Query, Mutation } from 'react-apollo';
+import gql from 'graphql-tag';
 import Select from '@atlaskit/select/dist/esm/Select';
 import { Field, FormSection } from '@atlaskit/form';
 import Button from '@atlaskit/button';
-import styled from 'styled-components';
-import sanitizeData from '../../sanitizeData';
+import Spinner from '@atlaskit/spinner';
 
 import {
+  FormRow,
   idFind,
   getDefaultOptionValue,
   getIconUrlOptionLabel,
   getStatusOptionLabel,
   MinWidthFieldWrapper
 } from './utils';
-import type {
-  TransitionMappingIssueTypeType,
-  TransitionMappingType
-} from '../../../server/transition/types';
+import type { TransitionMappingIssueTypeType } from '../../../server/transition/types';
+import sanitizeData from '../../sanitizeData';
 
 type PropsType = {
   jiraData: *,
-  data: TransitionMappingType,
   labels: string[],
-  update: any
+  projectId: string
 };
 
 type StateType = {
   selectedIssueType?: *
 };
 
-const FormRow = styled.div`
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
+const refetchQueries = ['MappingIssueTypes'];
 
-  & > *:not(:last-child) {
-    margin-right: 12px;
+const ListQuery = gql`
+  query MappingIssueTypes($gitlabProjectId: String!) {
+    projectMappingIssueTypes(gitlabProjectId: $gitlabProjectId) {
+      id
+      projectId
+      gitlabLabel
+      issueTypeId
+      closedStatusId
+    }
   }
 `;
 
-export default class IssueTypes extends Component<PropsType> {
-  update = (index: number, issueType: *) => {
-    const issueTypes = [...this.props.data.issueTypes];
-    issueTypes.splice(index, 1, issueType);
-    const updated = {
-      ...this.props.data,
-      issueTypes
-    };
-    this.props.update({
-      variables: {
-        mapping: sanitizeData(updated)
-      }
-    });
-  };
+const UpsertQuery = gql`
+  mutation UpsertMappingIssueType($issueType: MappingIssueTypeInput!) {
+    upsertProjectMappingIssueType(issueType: $issueType) {
+      success
+    }
+  }
+`;
 
-  remove = (index: number) => {
-    const issueTypes = [...this.props.data.issueTypes];
-    issueTypes.splice(index, 1);
-    const updated = {
-      ...this.props.data,
-      issueTypes
-    };
-    this.props.update({
-      variables: {
-        mapping: sanitizeData(updated)
-      }
-    });
-  };
+const DeleteQuery = gql`
+  mutation DeleteMappingIssueType($id: Int!) {
+    deleteProjectMappingIssueType(id: $id) {
+      success
+    }
+  }
+`;
 
-  add = () => {
-    const issueTypes = [...this.props.data.issueTypes];
-    issueTypes.push({});
-    const updated = {
-      ...this.props.data,
-      issueTypes
-    };
-    this.props.update({
-      variables: {
-        mapping: sanitizeData(updated)
-      }
-    });
-  };
-
+export default class MappingIssueTypes extends Component<PropsType> {
   render() {
-    const { data, jiraData, labels } = this.props;
+    const { projectId, labels, jiraData } = this.props;
     return (
-      <FormSection name="issue-types">
-        <MinWidthFieldWrapper>
-          <h3>Map GitLab labels to issue types</h3>
-          {data.issueTypes.map((issueType, index) => (
-            <IssueType
-              key={index}
-              tags={labels}
-              jiraData={jiraData}
-              index={index}
-              data={issueType}
-              update={this.update}
-              remove={this.remove}
-            />
-          ))}
-          <Button appearance="primary" onClick={this.add}>
-            Add New Issue Type Mapping
-          </Button>
-        </MinWidthFieldWrapper>
-      </FormSection>
+      <Query query={ListQuery} variables={{ gitlabProjectId: projectId }}>
+        {({ data, loading, error }) => {
+          if (loading) return <Spinner />;
+          if (error) {
+            console.error(error);
+            return <div>Error, check console.</div>;
+          }
+          return (
+            <FormSection name="issue-types">
+              <MinWidthFieldWrapper>
+                <h3>Map GitLab labels to issue types</h3>
+                {data.projectMappingIssueTypes.map((issueType) => (
+                  <IssueTypeMap
+                    key={issueType.id}
+                    tags={labels}
+                    jiraData={jiraData}
+                    data={issueType}
+                  />
+                ))}
+                <Mutation
+                  mutation={UpsertQuery}
+                  refetchQueries={refetchQueries}
+                >
+                  {(upsert) => (
+                    <NewIssueTypeMap
+                      tags={labels}
+                      jiraData={jiraData}
+                      upsert={upsert}
+                      projectId={projectId}
+                    />
+                  )}
+                </Mutation>
+              </MinWidthFieldWrapper>
+            </FormSection>
+          );
+        }}
+      </Query>
     );
   }
 }
 
-type IssuePropsType = {
-  index: number,
+class NewIssueTypeMap extends Component<
+  {
+    projectId: string,
+    tags: string[],
+    jiraData: *,
+    upsert: (issueType: *) => void
+  },
+  {
+    data: {
+      gitlabLabel?: string,
+      issueTypeId?: string,
+      closedStatusId?: string
+    }
+  }
+> {
+  constructor(props: *) {
+    super(props);
+
+    this.state = {
+      data: {
+        projectId: props.projectId
+      }
+    };
+  }
+
+  update = (issueType: *) => {
+    this.setState({ data: issueType });
+  };
+
+  save = () => {
+    const issueType = this.state.data;
+    if (
+      !issueType.gitlabLabel ||
+      !issueType.issueTypeId ||
+      !issueType.closedStatusId
+    ) {
+      return;
+    }
+    this.props.upsert({ variables: { issueType } });
+  };
+
+  render() {
+    const { tags, jiraData } = this.props;
+    const { data } = this.state;
+    return (
+      <IssueTypeMapping
+        tags={tags}
+        jiraData={jiraData}
+        // $FlowFixMe
+        data={data}
+        upsert={this.update}
+        create={this.save}
+      />
+    );
+  }
+}
+
+const IssueTypeMap = (props: {
+  tags: string[],
+  jiraData: *,
+  data: TransitionMappingIssueTypeType
+}) => (
+  <Mutation mutation={UpsertQuery} refetchQueries={refetchQueries}>
+    {(upsert) => (
+      <Mutation mutation={DeleteQuery} refetchQueries={refetchQueries}>
+        {(remove) => (
+          <IssueTypeMapping
+            {...props}
+            upsert={(issueType) =>
+              upsert({ variables: { issueType: sanitizeData(issueType) } })
+            }
+            remove={(issueType) => remove({ variables: { id: issueType.id } })}
+          />
+        )}
+      </Mutation>
+    )}
+  </Mutation>
+);
+
+type IssueTypePropsType = {
   tags: string[],
   jiraData: *,
   data: TransitionMappingIssueTypeType,
-  update: (index: number, issueMap: *) => void,
-  remove: (index: number) => void
+  upsert: (issueType: *) => void,
+  remove?: (issueType: *) => void,
+  create?: () => void
 };
 
-class IssueType extends Component<IssuePropsType, StateType> {
-  constructor(props: IssuePropsType) {
+class IssueTypeMapping extends Component<IssueTypePropsType, StateType> {
+  constructor(props: IssueTypePropsType) {
     super(props);
 
     this.state = {
@@ -131,35 +205,37 @@ class IssueType extends Component<IssuePropsType, StateType> {
   }
 
   remove = () => {
-    this.props.remove(this.props.index);
+    if (this.props.remove) {
+      this.props.remove(this.props.data);
+    }
   };
 
   selectIssueType = (option: *) => {
     this.setState({
       selectedIssueType: option
     });
-    this.props.update(this.props.index, {
+    this.props.upsert({
       ...this.props.data,
       issueTypeId: option.id
     });
   };
 
   selectClosedStatus = (option: *) => {
-    this.props.update(this.props.index, {
+    this.props.upsert({
       ...this.props.data,
       closedStatusId: option.id
     });
   };
 
   selectTag = ({ value }: *) => {
-    this.props.update(this.props.index, {
+    this.props.upsert({
       ...this.props.data,
       gitlabLabel: value
     });
   };
 
   render() {
-    const { data, tags, jiraData } = this.props;
+    const { data, tags, jiraData, remove, create } = this.props;
     const { selectedIssueType } = this.state;
     let selectedIssueTypeStatuses = [];
     if (selectedIssueType) {
@@ -196,7 +272,16 @@ class IssueType extends Component<IssuePropsType, StateType> {
             )}
           />
         </Field>
-        <Button onClick={this.remove}>Delete</Button>
+        {remove && (
+          <Button appearance="danger" onClick={this.remove}>
+            Delete
+          </Button>
+        )}
+        {create && (
+          <Button appearance="primary" onClick={create}>
+            Create
+          </Button>
+        )}
       </FormRow>
     );
   }

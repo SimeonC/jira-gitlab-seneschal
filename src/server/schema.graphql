@@ -13,13 +13,14 @@ type LoadGitlabProject {
 
 type ProcessingProject {
   projectId: String
-  gitlabProjectName: String
   isProcessing: Boolean
   isLoading: Boolean
   completedCount: Int
+  failedCount: Int
   totalCount: Int
   currentMessage: String
   currentIssueIid: String
+  meta: GitlabProject
 }
 
 type FailureConfig {
@@ -50,10 +51,15 @@ type Queries {
   processingProjects: [ProcessingProject]
   processingProject(gitlabProjectId: String!): ProcessingProject
   projectMapping(gitlabProjectId: String!): TransitionProjectMapping
+  projectMappingComponents(gitlabProjectId: String!): [MappingComponent!]
+  projectMappingIssueTypes(gitlabProjectId: String!): [MappingIssueType!]
+  projectMappingPriorities(gitlabProjectId: String!): [MappingPriority!]
+  projectMappingStatuses(gitlabProjectId: String!): [MappingStatuses!]
+  projectMappingVersions(gitlabProjectId: String!): [MappingVersion!]
   projectIssues(gitlabProjectId: String!): [GitlabIssue!]!
   projectMeta(gitlabProjectId: String!): GitlabProject
   projectLabels(gitlabProjectId: String!): [String!]!
-  projectMilestones(gitlabProjectId: String!): [GitlabMilestone!]!
+  projectMilestones(gitlabProjectId: String!): [MappingMilestone!]!
   projectUsers(gitlabProjectId: String!): [GitlabUser!]!
   jiraIssueTypes(projectId: String!): [JiraIssueType!]!
   jiraVersions(projectId: String!): [JiraVersion!]!
@@ -72,7 +78,26 @@ type Mutations {
     gitlabProjectId: String
     mapping: TransitionProjectMappingInput
   ): TransitionProjectMapping
-  setWebhookMetadata(metadata: WebhookMetadataInput): WebhookMetadata
+  upsertProjectMappingComponent(
+    component: MappingComponentInput!
+  ): SuccessResponse
+  deleteProjectMappingComponent(id: Int!): SuccessResponse
+  upsertProjectMappingIssueType(
+    issueType: MappingIssueTypeInput!
+  ): SuccessResponse
+  deleteProjectMappingIssueType(id: Int!): SuccessResponse
+  upsertProjectMappingPriority(priority: MappingPriorityInput!): SuccessResponse
+  deleteProjectMappingPriority(id: Int!): SuccessResponse
+  upsertProjectMappingStatus(status: MappingStatusesInput!): SuccessResponse
+  deleteProjectMappingStatus(id: Int!): SuccessResponse
+  upsertProjectMappingVersion(version: MappingVersionInput!): SuccessResponse
+  deleteProjectMappingVersion(id: Int!): SuccessResponse
+  setWebhookMetadata(transitionKeywords: [String!]): SuccessResponse
+  upsertWebhookTransitionMap(
+    jiraProjectKey: String!
+    transitionStatusIds: WebhookTransitionsInput!
+  ): SuccessResponse
+  deleteWebhookTransitionMap(jiraProjectKey: String!): SuccessResponse
   createGitlabWebhooks(gitlabProjectId: String!): WebhookStatus
   processProject(gitlabProjectId: String): SuccessResponse
   clearMigrationProject(gitlabProjectId: String): SuccessResponse
@@ -84,8 +109,7 @@ type Mutations {
   migrateMilestones(
     jiraProjectId: String!
     gitlabProjectId: String!
-  ): TransitionProjectMapping
-  retryFailure(gitlabProjectId: String, issueIid: String): SuccessResponse
+  ): [MappingVersion!]
   retryAllFailures: SuccessResponse
 }
 

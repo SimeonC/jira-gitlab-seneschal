@@ -1,7 +1,7 @@
 // @flow
 import filter from 'lodash/filter';
 import kebabCase from 'lodash/kebabCase';
-import uniqueBy from 'lodash/uniqBy';
+import unique from 'lodash/uniq';
 import markdownTransform from './markdownTransform';
 import GitlabApi from '../apis/gitlab';
 import type {
@@ -12,7 +12,7 @@ import type {
   TransitionMappingType
 } from './types';
 import { jiraRequest } from '../apis/jira';
-import transitionProjectApi from '../apis/transitionProject';
+import type { DatabaseType } from '../models';
 
 function transformLabels(labels: string[]) {
   return labels.map((label) => {
@@ -22,34 +22,51 @@ function transformLabels(labels: string[]) {
 }
 
 export default async function createJiraIssue(
-  encryptionKey: string,
+  database: DatabaseType,
   jiraApi: *,
   jiraBaseUrl: string,
   gitlabProjectId: string,
   gitlabIssueIid: string,
   logger: (message: string) => void
 ) {
-  const gitlabApi = GitlabApi(encryptionKey);
+  const gitlabApi = await GitlabApi(database);
 
-  const transitionProjectDb = transitionProjectApi(
-    encryptionKey,
-    gitlabProjectId
+  const mappingQueryOptions = {
+    where: {
+      projectId: gitlabProjectId
+    }
+  };
+
+  const mapping: TransitionMappingType = await database.MigrationMappings.findOne(
+    mappingQueryOptions
   );
 
-  const mapping: TransitionMappingType = transitionProjectDb
-    .get('mapping')
-    .value();
+  const issue = await database.MigrationIssues.findOne({
+    where: {
+      projectId: gitlabProjectId,
+      iid: gitlabIssueIid
+    }
+  });
 
-  const issue = transitionProjectDb
-    .get('issues')
-    .find({ iid: gitlabIssueIid })
-    .value();
+  const mappingIssueTypes = await database.MigrationMappingIssueTypes.findAll(
+    mappingQueryOptions
+  );
+  const mappingStatuses = await database.MigrationMappingStatuses.findAll(
+    mappingQueryOptions
+  );
+  const mappingComponents = await database.MigrationMappingComponents.findAll(
+    mappingQueryOptions
+  );
+  const mappingPriorities = await database.MigrationMappingPriorities.findAll(
+    mappingQueryOptions
+  );
+
   if (!issue) return;
   logger('Issue Loaded, starting processing...');
 
   const { labels, title, state, description, milestone, author } = issue;
 
-  const components = mapping.baseValues.components || [];
+  const components = [...mapping.defaultComponentIds] || [];
   let labelIssueType: ?TransitionMappingIssueTypeType;
   let jiraStatus: ?{ statusId: string };
   let jiraPriority;
@@ -63,19 +80,19 @@ export default async function createJiraIssue(
 
   const otherLabels = labels.reduce((remainingLabels, label) => {
     const foundLabelIssueType: ?TransitionMappingIssueTypeType = findGitlabLabel(
-      mapping.issueTypes,
+      mappingIssueTypes,
       label
     );
     const foundJiraStatus: ?TransitionMappingStatusType = findGitlabLabel(
-      mapping.statuses,
+      mappingStatuses,
       label
     );
     const foundJiraComponent: ?TransitionMappingComponentType = findGitlabLabel(
-      mapping.components,
+      mappingComponents,
       label
     );
     const foundJiraPriority: ?TransitionMappingPriorityType = findGitlabLabel(
-      mapping.priorities,
+      mappingPriorities,
       label
     );
     if (foundLabelIssueType) {
@@ -88,7 +105,7 @@ export default async function createJiraIssue(
       jiraPriority = { id: foundJiraPriority.priorityId };
     }
     if (foundJiraComponent) {
-      components.push({ id: foundJiraComponent.componentId });
+      components.push(foundJiraComponent.componentId);
     }
     if (!foundLabelIssueType && !foundJiraStatus && !foundJiraComponent) {
       remainingLabels.push(label);
@@ -96,8 +113,8 @@ export default async function createJiraIssue(
     return remainingLabels;
   }, []);
 
-  if (mapping.statuses && mapping.statuses.length) {
-    jiraStatus = mapping.statuses.find(
+  if (mappingStatuses.length) {
+    jiraStatus = mappingStatuses.find(
       ({ gitlabLabel, issueTypeId }) =>
         labelIssueType && issueTypeId === labelIssueType
           ? labelIssueType.issueTypeId
@@ -115,7 +132,10 @@ export default async function createJiraIssue(
 
   let fixVersions;
   if (milestone && milestone.id) {
-    const version = mapping.versions.find(
+    const mappingVersions = await database.MigrationMappingVersions.findAll(
+      mappingQueryOptions
+    );
+    const version = mappingVersions.find(
       (versionMap) => versionMap.milestoneId === `${milestone.id}`
     );
     if (version) {
@@ -168,7 +188,9 @@ export default async function createJiraIssue(
 
   const jiraIssueCreateResponse = await jiraRequest(jiraApi, 'post', '/issue', {
     fields: {
-      project: mapping.baseValues.project,
+      project: {
+        id: mapping.jiraProjectId
+      },
       issuetype: {
         id: issueTypeId
       },
@@ -176,7 +198,7 @@ export default async function createJiraIssue(
       labels: transformLabels(otherLabels),
       summary: title,
       fixVersions,
-      components: uniqueBy(components, 'id'),
+      components: unique(components).map((id) => ({ id })),
       description: {
         type: 'doc',
         version: 1,
@@ -185,6 +207,17 @@ export default async function createJiraIssue(
     }
   });
   const jiraIssue = jiraIssueCreateResponse;
+  if (jiraIssue.errors) {
+    const errors = Object.keys(jiraIssue.errors).map(
+      (key) => `${key}: ${jiraIssue.errors[key]}`
+    );
+    throw new Error(
+      `Failed to create Issue:\n${errors
+        .concat(jiraIssue.errorMessages)
+        .map((m) => `- ${m}`)
+        .join('\n')}`
+    );
+  }
 
   await gitlabApi.Issues.edit(gitlabProjectId, gitlabIssueIid, {
     description: `Migrated to: [${jiraIssue.key}](${jiraBaseUrl}/browse/${

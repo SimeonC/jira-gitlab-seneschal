@@ -1,6 +1,5 @@
 // @flow
-import sortedIndexBy from 'lodash/sortedIndexBy';
-import lowdb from '../lowdb';
+import type { DatabaseType } from '../models';
 
 export const WEBHOOK_TYPES = {
   COMMENTS: 'note',
@@ -23,7 +22,7 @@ export type WebhookCredentialType = {
   clientKey: string
 };
 
-type WebhookTransitionsType = {
+export type WebhookTransitionsType = {
   mergeId: string,
   openId: string,
   closeId: string
@@ -47,142 +46,146 @@ export type WebhookProjectStatusType = {
   status: WebhookProjectStatusEnumType
 };
 
-function loadDb(encryptionKey: string) {
-  return lowdb(encryptionKey, 'webhooks', { hooks: {} });
-}
+const defaultKeywords = [
+  'fix',
+  'fixes',
+  'fixed',
+  'close',
+  'closes',
+  'closed',
+  'complete',
+  'completes',
+  'completed',
+  'resolve',
+  'resolves',
+  'resolved'
+];
 
-function loadStatusDb(encryptionKey: string) {
-  return lowdb(encryptionKey, 'webhooksStatus', { projects: [] });
-}
-
-function loadMetadataDb(encryptionKey: string) {
-  return lowdb(encryptionKey, 'webhooksMetadata', {
-    __default: {
-      transitionKeywords: [
-        'fix',
-        'fixes',
-        'fixed',
-        'close',
-        'closes',
-        'closed',
-        'complete',
-        'completes',
-        'completed',
-        'resolve',
-        'resolves',
-        'resolved'
-      ],
-      transitionMap: []
-    }
-  });
-}
-
-export function getWebhookMetadata(
-  encryptionKey: string,
+export async function getWebhookMetadata(
+  database: DatabaseType,
   clientKey: string,
   force: boolean = false
 ): WebhookMetadataType {
-  const db = loadMetadataDb(encryptionKey);
-  const clientValue = db.get(clientKey).value();
-  if (!clientValue && !force) {
-    throw new Error('Webhook has not been setup for this clientKey');
+  let transitionMetadata = await database.WebhookTransitions.findOne({
+    where: {
+      clientKey
+    },
+    include: [
+      {
+        model: database.WebhookTransitionMaps,
+        as: 'transitionMap'
+      }
+    ],
+    attributes: {
+      exclude: ['clientKey']
+    }
+  });
+  if (!transitionMetadata) {
+    if (!force) {
+      throw new Error('Webhook has not been setup for this clientKey');
+    }
+    await database.WebhookTransitions.upsert({
+      clientKey,
+      transitionKeywords: defaultKeywords
+    });
+    transitionMetadata = {
+      transitionKeywords: defaultKeywords,
+      transitionMap: []
+    };
   }
-  const defaultValue = db.get('__default').value();
-  return {
-    ...defaultValue,
-    ...(clientValue || {})
-  };
+  // $FlowFixMe
+  return transitionMetadata;
 }
 
-export function setWebhookMetadata(
-  encryptionKey: string,
-  clientKey: string,
-  metadata: WebhookMetadataType
-) {
-  loadMetadataDb(encryptionKey)
-    .set(clientKey, metadata)
-    .write();
-}
-
-export function registerProject(
-  encryptionKey: string,
+export async function registerProject(
+  database: DatabaseType,
   projectId: string,
   projectName: string,
   projectUrl: string
-) {
-  updateProject(encryptionKey, projectId, {
+): Promise<boolean> {
+  return await upsertProject(database, projectId, {
     name: projectName,
     url: projectUrl,
     status: 'pending'
   });
 }
 
-export function updateProject(
-  encryptionKey: string,
+export async function upsertProject(
+  database: DatabaseType,
   projectId: string,
-  props: { name?: string, url?: string, status?: WebhookProjectStatusEnumType }
-) {
-  const db = loadStatusDb(encryptionKey);
-  const current = db.get('projects').value();
-  const newProject: WebhookProjectStatusType = {
-    id: `${projectId}`,
-    ...props
-  };
-  const insertIndex = sortedIndexBy(current, newProject, 'id');
-  const isExisting =
-    current[insertIndex] && current[insertIndex].id === newProject.id;
-  let updatedProject = newProject;
-  if (isExisting) {
-    updatedProject = {
-      ...current[insertIndex],
-      ...newProject
-    };
-  }
-  current.splice(insertIndex, isExisting ? 1 : 0, updatedProject);
-  db.set('projects', current).write();
+  props: { name: string, url: string, status: WebhookProjectStatusEnumType }
+): boolean {
+  await database.WebhookStatuses.upsert({
+    ...props,
+    id: `${projectId}`
+  });
+  // $FlowFixMe
   return true;
 }
 
-export function allProjects(encryptionKey: string): WebhookProjectStatusType[] {
-  return loadStatusDb(encryptionKey)
-    .get('projects')
-    .value();
+export async function updateProject(
+  database: DatabaseType,
+  projectId: string,
+  props: { name: string, url: string, status: WebhookProjectStatusEnumType }
+): boolean {
+  await database.WebhookStatuses.update(props, {
+    where: {
+      id: `${projectId}`
+    }
+  });
+  // $FlowFixMe
+  return true;
 }
 
-export function getWebhookClientKey(
-  encryptionKey: string,
+export async function allProjects(
+  database: DatabaseType
+): WebhookProjectStatusType[] {
+  // $FlowFixMe
+  return await database.WebhookStatuses.findAll();
+}
+
+export async function getWebhookClientKey(
+  database: DatabaseType,
   key: string,
   secretKey: string
 ) {
-  const credential: WebhookCredentialType = loadDb(encryptionKey)
-    .get(`hooks.${key}`)
-    .value();
-  if (credential.secretKey === secretKey) {
+  const credential: WebhookCredentialType = await database.WebhookClients.findOne(
+    {
+      where: {
+        key,
+        secretKey
+      }
+    }
+  );
+  if (credential) {
     return credential.clientKey;
   }
   throw new Error(`Invalid secret key for webhook "${key}"`);
 }
 
-export function isValidSecretKey(
-  encryptionKey: string,
+export async function isValidSecretKey(
+  database: DatabaseType,
   key: string,
   secretKey: string
 ) {
-  try {
-    getWebhookClientKey(encryptionKey, key, secretKey);
-    return true;
-  } catch (error) {
-    return false;
-  }
+  const count = await database.WebhookClients.count({
+    where: {
+      key,
+      secretKey
+    }
+  });
+  return count === 1;
 }
 
-export function setWebhookClientKey(
-  encryptionKey: string,
+export async function setWebhookClientKey(
+  database: DatabaseType,
   key: string,
   secretKey: string,
   clientKey: string
 ) {
-  loadDb(encryptionKey)
-    .set(`hooks.${key}`, { secretKey, clientKey })
-    .write();
+  await database.WebhookClients.create({
+    key,
+    secretKey,
+    clientKey
+  });
 }

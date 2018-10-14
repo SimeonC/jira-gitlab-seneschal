@@ -8,17 +8,13 @@ import { jiraRequest } from './apis/jira';
 import { setCredential } from './apis/credentials';
 import {
   allProjects,
-  getWebhookMetadata as coreGetWebhookMetadata,
-  setWebhookMetadata as coreSetWebhookMetadata
+  getWebhookMetadata as coreGetWebhookMetadata
 } from './apis/webhooks';
-import type { TransitionMappingType } from './transition/types';
-import transitionProjectApi from './apis/transitionProject';
+import type { TransitionMappingVersionType } from './transition/types';
 import {
-  processQueue,
   projectStatuses,
   projectStatus,
   reprocessAllFailures,
-  reprocessFailure,
   clearProject,
   startProcessingProject,
   projectFailures
@@ -28,9 +24,12 @@ import createVersionsFromMilestones, {
 } from './transition/createVersions';
 import type {
   WebhookMetadataType,
-  WebhookProjectStatusType
+  WebhookProjectStatusType,
+  WebhookTransitionsType
 } from './apis/webhooks';
+import projectMappingApi from './apis/projectMapping';
 import { createWebhooks } from './webhooks';
+import type { DatabaseType } from './models';
 
 type SuccessResponseType = {
   success: boolean
@@ -53,19 +52,27 @@ process.on('SIGINT', () => cleanExit('SIGINT')); // catch ctrl-c
 process.on('SIGUSR2', () => cleanExit('SIGUSR2')); // catch ctrl-c
 process.on('SIGTERM', () => cleanExit('SIGTERM')); // catch kill
 
-async function testGitlabCredentials(encryptionKey: string) {
+async function testGitlabCredentials(database: DatabaseType) {
   try {
-    await gitlabApi(encryptionKey).Users.current();
+    const api = await gitlabApi(database);
+    await api.Users.current();
     return true;
   } catch (err) {
+    console.error('gitlab', err);
     return false;
   }
 }
 
-export default function(encryptionKey: string, addon: *) {
+export default function(addon: *) {
+  const database = addon.schema.models;
+  loadGitlabProjectProcess.send({
+    init: true,
+    ...addon.config.store()
+  });
+
   async function isSetup() {
     return {
-      success: await testGitlabCredentials(encryptionKey)
+      success: await testGitlabCredentials(database)
     };
   }
 
@@ -150,7 +157,8 @@ export default function(encryptionKey: string, addon: *) {
   }
 
   async function gitlabProjects() {
-    const projects = await gitlabApi(encryptionKey).Projects.all({
+    const api = await gitlabApi(addon.schema.models);
+    const projects = await api.Projects.all({
       membership: true,
       archived: false,
       simple: true
@@ -164,7 +172,8 @@ export default function(encryptionKey: string, addon: *) {
     root: *,
     { gitlabProjectId }: { gitlabProjectId: string }
   ) {
-    clearProject(encryptionKey, gitlabProjectId);
+    // pass addon as needs transaction
+    await clearProject(addon, gitlabProjectId);
     return {
       success: true
     };
@@ -175,7 +184,6 @@ export default function(encryptionKey: string, addon: *) {
     { projectId }: { projectId: string }
   ) {
     loadGitlabProjectProcess.send({
-      encryptionKey,
       projectId
     });
     return {
@@ -184,106 +192,94 @@ export default function(encryptionKey: string, addon: *) {
   }
 
   function processingFailures() {
-    return projectFailures(encryptionKey);
+    return projectFailures(addon.schema.models);
   }
 
   function processingProjects() {
-    return projectStatuses(encryptionKey);
+    return projectStatuses(addon.schema.models);
   }
 
   function processingProject(
     root: *,
     { gitlabProjectId }: { gitlabProjectId: string }
   ) {
-    return projectStatus(encryptionKey, gitlabProjectId);
+    return projectStatus(addon.schema.models, gitlabProjectId);
   }
 
-  function setProjectMapping(
-    root: *,
-    {
-      gitlabProjectId,
-      mapping
-    }: {
-      gitlabProjectId: string,
-      mapping: TransitionMappingType
-    }
-  ): TransitionMappingType {
-    const transitionApi = transitionProjectApi(encryptionKey, gitlabProjectId);
-    transitionApi.set('mapping', mapping).write();
-    return mapping;
-  }
-
-  function projectMapping(
-    root: *,
-    { gitlabProjectId }: { gitlabProjectId: string }
-  ): TransitionMappingType {
-    return transitionProjectApi(encryptionKey, gitlabProjectId)
-      .get('mapping')
-      .value();
-  }
-
-  function projectLabels(
+  async function projectLabels(
     root: *,
     { gitlabProjectId }: { gitlabProjectId: string }
   ): * {
-    return transitionProjectApi(encryptionKey, gitlabProjectId)
-      .get('labels')
-      .value();
+    const labels = await addon.schema.models.MigrationLabels.findAll({
+      where: {
+        projectId: gitlabProjectId
+      }
+    });
+    return labels.map(({ label }) => label);
   }
 
-  function projectUsers(
+  async function projectUsers(
     root: *,
     { gitlabProjectId }: { gitlabProjectId: string }
   ): * {
-    return transitionProjectApi(encryptionKey, gitlabProjectId)
-      .get('users')
-      .value();
+    return await addon.schema.models.MigrationUsers.findAll({
+      where: {
+        projectId: gitlabProjectId
+      }
+    });
   }
 
-  function projectMilestones(
+  async function projectMilestones(
     root: *,
     { gitlabProjectId }: { gitlabProjectId: string }
   ): * {
-    return transitionProjectApi(encryptionKey, gitlabProjectId)
-      .get('milestones')
-      .value();
+    return await addon.schema.models.MigrationMilestones.findAll({
+      where: {
+        projectId: gitlabProjectId
+      }
+    });
   }
 
-  function projectIssues(
+  async function projectIssues(
     root: *,
     { gitlabProjectId }: { gitlabProjectId: string }
   ): * {
-    return transitionProjectApi(encryptionKey, gitlabProjectId)
-      .get('issues')
-      .value();
+    return await addon.schema.models.MigrationIssues.findAll({
+      where: {
+        projectId: gitlabProjectId
+      }
+    });
   }
 
-  function projectMeta(
+  async function projectMeta(
     root: *,
     { gitlabProjectId }: { gitlabProjectId: string }
   ): * {
-    return transitionProjectApi(encryptionKey, gitlabProjectId)
-      .get('meta')
-      .value();
+    const project = await addon.schema.models.MigrationProjects.findOne({
+      where: {
+        projectId: gitlabProjectId
+      }
+    });
+    return project ? project.meta : null;
   }
 
-  function migrateMilestones(
+  async function migrateMilestones(
     root: *,
     {
       gitlabProjectId,
       jiraProjectId
     }: { gitlabProjectId: string, jiraProjectId: string },
     req: *
-  ): TransitionMappingType {
-    return createVersionsFromMilestones(
-      encryptionKey,
+  ): TransitionMappingVersionType[] {
+    return await createVersionsFromMilestones(
+      addon.schema.models,
       addon.httpClient(req),
       jiraProjectId,
       gitlabProjectId
     );
   }
 
-  function createJiraVersionFromMilestone(
+  async function createJiraVersionFromMilestone(
     root: *,
     {
       jiraProjectId,
@@ -294,8 +290,8 @@ export default function(encryptionKey: string, addon: *) {
   ): SuccessResponseType {
     // $FlowFixMe
     return {
-      success: createVersionFromMilestone(
-        encryptionKey,
+      success: await createVersionFromMilestone(
+        addon.schema.models,
         addon.httpClient(req),
         jiraProjectId,
         gitlabProjectId,
@@ -309,9 +305,9 @@ export default function(encryptionKey: string, addon: *) {
     { appUrl, token }: { appUrl: string, token: string }
   ) {
     try {
-      setCredential(encryptionKey, 'gitlab', { appUrl, token });
+      await setCredential(addon.schema.models, 'gitlab', { appUrl, token });
       return {
-        success: testGitlabCredentials(encryptionKey)
+        success: testGitlabCredentials(addon.schema.models)
       };
     } catch (error) {
       console.error(error);
@@ -321,14 +317,14 @@ export default function(encryptionKey: string, addon: *) {
     }
   }
 
-  function processProject(
+  async function processProject(
     root: *,
     { gitlabProjectId }: { gitlabProjectId: string },
     req: *
   ): SuccessResponseType {
-    startProcessingProject(
-      encryptionKey,
+    await startProcessingProject(
       addon,
+      addon.httpClient(req),
       req.context.clientKey,
       gitlabProjectId
     );
@@ -337,30 +333,61 @@ export default function(encryptionKey: string, addon: *) {
     };
   }
 
-  function retryFailure(
-    root: *,
-    { gitlabProjectId, issueIid }: { gitlabProjectId: string, issueIid: string }
-  ): SuccessResponseType {
-    reprocessFailure(encryptionKey, addon, issueIid, gitlabProjectId);
-    return { success: true };
-  }
-
-  function retryAllFailures(): SuccessResponseType {
-    reprocessAllFailures(encryptionKey, addon);
+  async function retryAllFailures(): SuccessResponseType {
+    await reprocessAllFailures(addon);
     return { success: true };
   }
 
   function getWebhookMetadata(root: *, params: *, req: *): WebhookMetadataType {
-    return coreGetWebhookMetadata(encryptionKey, req.context.clientKey, true);
+    return coreGetWebhookMetadata(
+      addon.schema.models,
+      req.context.clientKey,
+      true
+    );
   }
 
-  function setWebhookMetadata(
+  async function setWebhookMetadata(
     root: *,
-    { metadata }: { metadata: WebhookMetadataType },
+    { transitionKeywords }: { transitionKeywords: string[] },
+    req: *
+  ): SuccessResponseType {
+    await addon.schema.models.WebhookTransitions.upsert({
+      clientKey: req.context.clientKey,
+      transitionKeywords
+    });
+    return { success: true };
+  }
+
+  async function upsertWebhookTransitionMap(
+    root: *,
+    {
+      jiraProjectKey,
+      transitionStatusIds
+    }: { jiraProjectKey: string, transitionStatusIds: WebhookTransitionsType },
     req: *
   ): WebhookMetadataType {
-    coreSetWebhookMetadata(encryptionKey, req.context.clientKey, metadata);
-    return metadata;
+    await addon.schema.models.WebhookTransitionMaps.upsert({
+      clientKey: req.context.clientKey,
+      jiraProjectKey,
+      transitionStatusIds
+    });
+    return { success: true };
+  }
+
+  async function deleteWebhookTransitionMap(
+    root: *,
+    { jiraProjectKey }: { jiraProjectKey: string },
+    req: *
+  ): WebhookMetadataType {
+    const deletedCount = await addon.schema.models.WebhookTransitionMaps.destroy(
+      {
+        where: {
+          clientKey: req.context.clientKey,
+          jiraProjectKey
+        }
+      }
+    );
+    return { success: deletedCount === 1 };
   }
 
   function createGitlabWebhooks(
@@ -369,24 +396,19 @@ export default function(encryptionKey: string, addon: *) {
     req: *
   ): WebhookProjectStatusType {
     return createWebhooks(
-      encryptionKey,
+      addon.schema.models,
       gitlabProjectId,
       req.protocol + '://' + req.get('host'),
       req.context.clientKey
     );
   }
 
-  function webhooks(): WebhookProjectStatusType[] {
-    return allProjects(encryptionKey);
+  async function webhooks(): WebhookProjectStatusType[] {
+    return await allProjects(addon.schema.models);
   }
 
-  processQueue(encryptionKey, addon);
-  loadGitlabProjectProcess.send({
-    encryptionKey
-  });
-
   // bind all these functions to pass in the addon/jira api
-  return {
+  return projectMappingApi(addon, {
     Queries: {
       isSetup,
       jiraProjects,
@@ -394,7 +416,6 @@ export default function(encryptionKey: string, addon: *) {
       processingFailures,
       processingProjects,
       processingProject,
-      projectMapping,
       projectIssues,
       projectMeta,
       projectLabels,
@@ -412,15 +433,15 @@ export default function(encryptionKey: string, addon: *) {
     Mutations: {
       setGitlabCredentials,
       loadGitlabProject,
-      setProjectMapping,
       setWebhookMetadata,
+      upsertWebhookTransitionMap,
+      deleteWebhookTransitionMap,
       createGitlabWebhooks,
       processProject,
       createJiraVersionFromMilestone,
       clearMigrationProject,
       migrateMilestones,
-      retryFailure,
       retryAllFailures
     }
-  };
+  });
 }

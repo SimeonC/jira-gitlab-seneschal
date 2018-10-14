@@ -7,89 +7,104 @@ input IdInput {
 }
 
 type MappingIssueType {
+  id: Int
+  projectId: String!
   gitlabLabel: String
   closedStatusId: String
   issueTypeId: String
 }
 
 input MappingIssueTypeInput {
+  id: Int
+  projectId: String!
   gitlabLabel: String
   closedStatusId: String
   issueTypeId: String
 }
 
 type MappingStatuses {
+  id: Int
+  projectId: String!
   gitlabLabel: String
   issueTypeId: String
   statusId: String
 }
 
 input MappingStatusesInput {
+  id: Int
+  projectId: String!
   gitlabLabel: String
   issueTypeId: String
   statusId: String
 }
 
 type MappingVersion {
+  id: Int
+  projectId: String!
   milestoneId: String
   versionId: String
 }
 
 input MappingVersionInput {
+  id: Int
+  projectId: String!
   milestoneId: String
   versionId: String
 }
 
 type MappingComponent {
+  id: Int!
+  projectId: String!
   gitlabLabel: String
   componentId: String
 }
 
 input MappingComponentInput {
+  id: Int
+  projectId: String!
   gitlabLabel: String
   componentId: String
 }
 
 type MappingPriority {
+  id: Int
+  projectId: String!
   gitlabLabel: String
   priorityId: String
 }
 
 input MappingPriorityInput {
+  id: Int
+  projectId: String!
   gitlabLabel: String
   priorityId: String
 }
 
-type BaseValues {
-  project: IdType
-  components: [IdType!]
-}
-
-input BaseValuesInput {
-  project: IdInput!
-  components: [IdInput!]
-}
-
 input TransitionProjectMappingInput {
-  baseValues: BaseValuesInput
+  jiraProjectId: String
+  defaultComponentIds: [String!]
   defaultIssueTypeId: String
   defaultIssueTypeClosedStatusId: String
   defaultResolutionId: String
-  issueTypes: [MappingIssueTypeInput!]
-  statuses: [MappingStatusesInput!]
-  priorities: [MappingPriorityInput!]
-  versions: [MappingVersionInput!]
-  components: [MappingComponentInput!]
 }
 
 type TransitionProjectMapping {
-  baseValues: BaseValues
+  jiraProjectId: String
+  defaultComponentIds: [String!]
   defaultIssueTypeId: String
   defaultIssueTypeClosedStatusId: String
   defaultResolutionId: String
-  issueTypes: [MappingIssueType!]
-  statuses: [MappingStatuses!]
-  priorities: [MappingPriority!]
-  versions: [MappingVersion!]
-  components: [MappingComponent!]
+}
+
+type MappingMilestone {
+  id: Int!
+  iid: Int!
+  projectId: Int
+  groupId: Int
+  title: String!
+  description: String!
+  state: String!
+  dueDate: String
+  startDate: String
+  webUrl: String!
 }

@@ -3,9 +3,6 @@
 # dependencies
 /node_modules
 
-# data files
-/src/server/lowdb/*.json
-
 # testing
 /coverage
 

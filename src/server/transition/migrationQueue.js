@@ -1,15 +1,13 @@
 //@flow
-import lowdb from '../lowdb';
 import createJiraIssue from './createJiraIssue';
-import transitionProjectApi, {
-  deleteTransitionProjectApi
-} from '../apis/transitionProject';
 import {
   getCredential,
   setCredential,
   clearCredential
 } from '../apis/credentials';
 import type { JiraCredential } from '../apis/credentials';
+import type { DatabaseType } from '../models';
+import createVersionsFromMilestones from './createVersions';
 
 type QueueElement = {
   // gitlab project id
@@ -20,228 +18,254 @@ type QueueElement = {
 type ProcessingProject = {
   isProcessing: boolean,
   completedCount: number,
+  failedCount: number,
   totalCount: number,
-  gitlabProjectName: string,
   currentMessage: string,
-  currentIssueIid: string
+  currentIssueIid: string,
+  meta: *
 };
-
-function loadQueueDb(encryptionKey: string) {
-  return lowdb(encryptionKey, 'migrationQueue', {
-    queue: [],
-    failures: [],
-    processingProjects: {}
-  });
-}
 
 const JIRA_GITLAB_PROJECT_KEY = 'jira-client-key-for-gitlab-project';
 
 let queueIsProcessing = false;
 
-export function reprocessFailure(
-  encryptionKey: string,
-  jiraAddon: *,
-  issueIid: string,
-  projectId: string
-) {
-  const queueDb = loadQueueDb(encryptionKey);
-  const failures = queueDb.get('failures').value();
-  const reprocessedFailure = failures.find(
-    ({ queueElement }) =>
-      queueElement.issueIid === issueIid && queueElement.projectId === projectId
+export async function reprocessAllFailures(jiraAddon: *) {
+  const database = jiraAddon.schema.models;
+  const failures = await database.MigrationFailures.findAll();
+  await database.MigrationQueue.bulkCreate(
+    failures.map(({ queueElement }) => ({
+      projectId: queueElement.projectId,
+      issueIid: queueElement.issueIid
+    }))
   );
-  if (!reprocessedFailure) return;
-  failures.remove(reprocessedFailure);
-  queueDb.set('failures', failures).write();
-  queueDb
-    .get('queue')
-    .push(reprocessedFailure.queueElement)
-    .write();
-  processQueue(encryptionKey, jiraAddon);
+  const tempSql = jiraAddon.schema.dialect.QueryGenerator.selectQuery(
+    'MigrationFailures',
+    {
+      attributes: [
+        [jiraAddon.schema.json('queueElement.projectId'), 'projectId']
+      ]
+    }
+  ).slice(0, -1); // to remove the ';' from the end of the SQL
+  await database.MigrationProjects.update(
+    { failedCount: 0 },
+    {
+      where: {
+        projectId: {
+          $in: jiraAddon.schema.literal(`(${tempSql})`)
+        }
+      }
+    }
+  );
+  await database.MigrationFailures.truncate();
+
+  // don't wait for the promise
+  processQueue(jiraAddon);
 }
 
-export function reprocessAllFailures(encryptionKey: string, jiraAddon: *) {
-  const queueDb = loadQueueDb(encryptionKey);
-  const failures = queueDb.get('failures').value();
-  queueDb.set('failures', []).write();
-  queueDb
-    .get('queue')
-    .push(...failures.map(({ queueElement }) => queueElement))
-    .write();
-  processQueue(encryptionKey, jiraAddon);
+export async function projectFailures(database: DatabaseType) {
+  return await database.MigrationFailures.findAll();
 }
 
-export function projectFailures(encryptionKey: string) {
-  return loadQueueDb(encryptionKey)
-    .get('failures')
-    .value();
+export async function projectStatuses(
+  database: DatabaseType
+): Promise<
+  (ProcessingProject & {
+    projectId: string
+  })[]
+> {
+  return await database.MigrationProjects.findAll();
 }
 
-export function projectStatuses(
-  encryptionKey: string
-): (ProcessingProject & {
-  projectId: string
-})[] {
-  const queueDb = loadQueueDb(encryptionKey);
-  const projects = queueDb.get('processingProjects').value();
-  return Object.keys(projects).map((projectId) => ({
-    ...projects[projectId],
-    projectId
-  }));
-}
-
-export function projectStatus(
-  encryptionKey: string,
+export async function projectStatus(
+  database: DatabaseType,
   gitlabProjectId: string
-): ?(ProcessingProject & {
+): Promise<?(ProcessingProject & {
   projectId: string
-}) {
-  const queueDb = loadQueueDb(encryptionKey);
-  const project = queueDb.get(`processingProjects.${gitlabProjectId}`).value();
-  if (!project) return null;
-  return {
-    ...project,
-    projectId: gitlabProjectId
-  };
+})> {
+  return await database.MigrationProjects.findOne({
+    where: {
+      projectId: gitlabProjectId
+    }
+  });
 }
 
 export async function startProcessingProject(
-  encryptionKey: string,
   jiraAddon: *,
+  jiraApi: *,
   clientKey: string,
   projectId: string
 ) {
-  const queueDb = loadQueueDb(encryptionKey);
-  const projectDb = transitionProjectApi(encryptionKey, projectId);
-  projectDb.set('isProcessing', true).write();
-  setCredential(encryptionKey, `${JIRA_GITLAB_PROJECT_KEY}-${projectId}`, {
-    clientKey
+  const database = jiraAddon.schema.models;
+  const queryOptions = {
+    where: {
+      projectId
+    }
+  };
+  await database.MigrationProjects.update(
+    {
+      isProcessing: true,
+      currentMessage: 'Auto-migrating Milestones to Versions',
+      completedCount: 0,
+      failedCount: 0
+    },
+    queryOptions
+  );
+  const mapping = await database.MigrationMappings.findOne(queryOptions);
+  await createVersionsFromMilestones(
+    jiraAddon.schema.models,
+    jiraApi,
+    mapping.jiraProjectId,
+    projectId
+  );
+  await database.MigrationProjects.update(
+    {
+      currentMessage: 'Starting migration'
+    },
+    queryOptions
+  );
+  await setCredential(database, `${JIRA_GITLAB_PROJECT_KEY}-${projectId}`, {
+    token: clientKey
   });
-  const issues = projectDb.get('issues').value();
-  issues.forEach((issue) => {
-    queueDb
-      .get('queue')
-      .push({
-        projectId,
-        issueIid: issue.iid
-      })
-      .write();
-  });
-  queueDb.set(`processingProjects.${projectId}.isProcessing`, true).write();
-  queueDb
-    .set(`processingProjects.${projectId}.currentMessage`, 'Starting Up')
-    .write();
-  queueDb.set(`processingProjects.${projectId}.completedCount`, 0).write();
-  processQueue(encryptionKey, jiraAddon);
+  const issues = await database.MigrationIssues.findAll(queryOptions);
+  await database.MigrationProjects.update(
+    {
+      totalCount: issues.length
+    },
+    queryOptions
+  );
+  await database.MigrationQueue.bulkCreate(
+    issues.map(({ iid }) => ({ projectId, issueIid: `${iid}` }))
+  );
+
+  // intentionally not awaiting this promise
+  processQueue(jiraAddon);
 }
 
-export async function clearProject(encryptionKey: string, projectId: string) {
-  deleteTransitionProjectApi(projectId);
-  clearCredential(encryptionKey, `${JIRA_GITLAB_PROJECT_KEY}-${projectId}`);
-
-  const queueDb = loadQueueDb(encryptionKey);
-  queueDb.unset(`processingProjects.${projectId}`).write();
+export async function clearProject(addon: *, projectId: string) {
+  await clearCredential(addon, `${JIRA_GITLAB_PROJECT_KEY}-${projectId}`);
+  await new Promise((resolve) =>
+    addon.schema.transaction(async (transaction) => {
+      const queryOptions = {
+        transaction,
+        where: {
+          projectId
+        }
+      };
+      await addon.schema.models.MigrationIssues.destroy(queryOptions);
+      await addon.schema.models.MigrationLabels.destroy(queryOptions);
+      await addon.schema.models.MigrationMappingComponents.destroy(
+        queryOptions
+      );
+      await addon.schema.models.MigrationMappingIssueTypes.destroy(
+        queryOptions
+      );
+      await addon.schema.models.MigrationMappingPriorities.destroy(
+        queryOptions
+      );
+      await addon.schema.models.MigrationMappings.destroy(queryOptions);
+      await addon.schema.models.MigrationMappingStatuses.destroy(queryOptions);
+      await addon.schema.models.MigrationMappingVersions.destroy(queryOptions);
+      await addon.schema.models.MigrationMilestones.destroy(queryOptions);
+      await addon.schema.models.MigrationProjects.destroy(queryOptions);
+      await addon.schema.models.MigrationUsers.destroy(queryOptions);
+      resolve();
+    })
+  );
 }
 
 async function initJiraApi(
-  encryptionKey: string,
   addon: *,
   gitlabProjectId: string
 ): { api: *, baseUrl: string } {
-  const jiraCredentials: JiraCredential = (getCredential(
-    encryptionKey,
+  const jiraCredentials: JiraCredential = (await getCredential(
+    addon.schema.models,
     `${JIRA_GITLAB_PROJECT_KEY}-${gitlabProjectId}`
   ): any);
   // $FlowFixMe
   return {
-    api: addon.httpClient(jiraCredentials),
-    ...(await addon.settings.get('clientInfo', jiraCredentials.clientKey))
+    api: addon.httpClient({ clientKey: jiraCredentials.token }),
+    ...(await addon.settings.get('clientInfo', jiraCredentials.token))
   };
 }
 
-function unshiftQueueElement(encryptionKey: string): ?QueueElement {
-  const queueDb = loadQueueDb(encryptionKey);
-  const queue = queueDb.get('queue').value();
-  const element: QueueElement = queue.shift();
-  queueDb.set('queue', queue).write();
+async function unshiftQueueElement(
+  database: DatabaseType
+): Promise<?QueueElement> {
+  const element = await database.MigrationQueue.findOne();
+  if (!element) return null;
+  await database.MigrationQueue.destroy({
+    where: {
+      id: element.id
+    }
+  });
   return element;
 }
 
-export async function processQueue(encryptionKey: string, jiraAddon: *) {
+export async function processQueue(jiraAddon: *) {
+  const database = jiraAddon.schema.models;
   if (queueIsProcessing) return;
-  const queue = loadQueueDb(encryptionKey)
-    .get('queue')
-    .value();
-  if (queue.length === 0) {
+  const queueLength = database.MigrationQueue.count();
+  if (queueLength === 0) {
     return;
   }
   queueIsProcessing = true;
 
-  let queueElement: ?QueueElement = unshiftQueueElement(encryptionKey);
+  let queueElement: ?QueueElement = await unshiftQueueElement(database);
   while (queueElement) {
-    await processQueueElement(encryptionKey, jiraAddon, queueElement);
-    queueElement = unshiftQueueElement(encryptionKey);
+    await processQueueElement(jiraAddon, queueElement);
+    queueElement = await unshiftQueueElement(database);
   }
   queueIsProcessing = false;
 }
 
-async function processQueueElement(
-  encryptionKey: string,
-  jiraAddon: *,
-  queueElement: QueueElement
-) {
-  const queueDb = loadQueueDb(encryptionKey);
+async function processQueueElement(jiraAddon: *, queueElement: QueueElement) {
+  const queryOptions = {
+    where: {
+      projectId: queueElement.projectId
+    }
+  };
+  const database = jiraAddon.schema.models;
   const { api: jiraApi, baseUrl: jiraBaseUrl } = await initJiraApi(
-    encryptionKey,
     jiraAddon,
     queueElement.projectId
   );
 
-  queueDb
-    .set(
-      `processingProjects.${queueElement.projectId}.currentIssueIid`,
-      queueElement.issueIid
-    )
-    .write();
+  await database.MigrationProjects.update(
+    {
+      currentIssueIid: queueElement.issueIid
+    },
+    queryOptions
+  );
   try {
     await createJiraIssue(
-      encryptionKey,
+      jiraAddon.schema.models,
       jiraApi,
       jiraBaseUrl,
       queueElement.projectId,
       queueElement.issueIid,
-      (message) => {
-        queueDb
-          .set(
-            `processingProjects.${queueElement.projectId}.currentMessage`,
-            message
-          )
-          .write();
+      async (message) => {
+        await database.MigrationProjects.update(
+          {
+            currentMessage: message
+          },
+          queryOptions
+        );
       }
     );
 
-    const processingProject = queueDb.get('processingProjects').value()[
-      queueElement.projectId
-    ];
-    queueDb
-      .set(
-        `processingProjects.${queueElement.projectId}.completedCount`,
-        processingProject.completedCount + 1
-      )
-      .write();
+    await database.MigrationProjects.increment('completedCount', queryOptions);
   } catch (error) {
-    queueDb
-      .get('failures')
-      .push({
-        queueElement,
-        error: error.response ? error.response.data : error.toString(),
-        config: error.config
-          ? {
-              url: error.config.url,
-              data: error.config.data
-            }
-          : null
-      })
-      .write();
+    await database.MigrationProjects.increment('failedCount', queryOptions);
+    console.error(error);
+    await database.MigrationFailures.create({
+      queueElement,
+      error: error.response ? error.response.data : error.toString(),
+      config: error.config
+        ? {
+            url: error.config.url,
+            data: error.config.data
+          }
+        : null
+    });
   }
 }

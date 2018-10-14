@@ -1,6 +1,4 @@
 //@flow
-import uuid from 'uuid/v4';
-import lowdb from '../lowdb';
 import gitlabApi from '../apis/gitlab';
 import {
   getWebhookClientKey,
@@ -34,40 +32,26 @@ type FailureElement = {
 
 let queueIsProcessing = false;
 
-function getQueueDb(encryptionKey: string) {
-  return lowdb(encryptionKey, 'webhookQueue', {
-    queue: [],
-    failures: []
-  });
-}
-
-export function enqueueWebhook(
-  encryptionKey: string,
-  jiraAddon: *,
-  element: QueueElement
-) {
-  getQueueDb(encryptionKey)
-    .get('queue')
-    .push(element)
-    .write();
+export async function enqueueWebhook(jiraAddon: *, element: QueueElement) {
+  await jiraAddon.schema.models.WebhookQueue.create(element);
   if (!queueIsProcessing) {
-    processQueue(encryptionKey, jiraAddon);
+    processQueue(jiraAddon);
   }
 }
 
 async function processElement(
-  encryptionKey: string,
   jiraAddon: *,
   gitlabApiInstance: *,
   queueElement: QueueElement
 ) {
-  const clientKey = getWebhookClientKey(
-    encryptionKey,
+  const clientKey = await getWebhookClientKey(
+    jiraAddon.schema.models,
     queueElement.key,
     queueElement.secretKey
   );
   // It's OK if this errors - it just means it'll get retried later.
-  const metadata = getWebhookMetadata(encryptionKey, clientKey);
+  const metadata = await getWebhookMetadata(jiraAddon.schema.models, clientKey);
+  console.log('metadata for', clientKey, metadata);
   const { baseUrl } = await jiraAddon.settings.get('clientInfo', clientKey);
   const jiraApi = jiraAddon.httpClient({ clientKey });
 
@@ -105,55 +89,53 @@ async function processElement(
       break;
   }
   if (processMetadata) {
-    updateProject(encryptionKey, processMetadata.projectId, {
+    await updateProject(jiraAddon.schema.models, processMetadata.projectId, {
       status: 'healthy'
     });
   }
 }
 
-export async function processQueue(encryptionKey: string, jiraAddon: *) {
-  const queueDb = getQueueDb(encryptionKey);
-  const queue = queueDb.get('queue').value();
-  if (queue.length === 0) {
-    queueIsProcessing = false;
-    return false;
-  }
+export async function processQueue(jiraAddon: *) {
   queueIsProcessing = true;
-  const queueElement: QueueElement = queue.shift();
-  queueDb.set('queue', queue).write();
-
-  const gitlabApiInstance = gitlabApi(encryptionKey);
-
-  try {
-    await processElement(
-      encryptionKey,
-      jiraAddon,
-      gitlabApiInstance,
-      queueElement
-    );
-  } catch (error) {
-    console.error(error);
-    try {
-      queueDb
-        .get('failures')
-        .push({
-          id: uuid(),
-          original: queueElement,
-          error: { message: error.toString(), details: JSON.stringify(error) }
-        })
-        .write();
-      const { web_url, name_with_namespace } = gitlabApiInstance.Projects.show(
-        queueElement.body.project.id
-      );
-      updateProject(encryptionKey, queueElement.body.project.id, {
-        name: name_with_namespace,
-        url: web_url,
-        status: 'sick'
-      });
-    } catch (fatalError) {
-      console.error(fatalError);
-    }
-  } finally {
-    return processQueue(encryptionKey, jiraAddon);
+  const database = jiraAddon.schema.models;
+  let nextQueueItem = await database.WebhookQueue.findOne();
+  if (!nextQueueItem) {
+    queueIsProcessing = false;
+    return;
   }
+
+  while (nextQueueItem) {
+    await database.WebhookQueue.destroy({
+      where: {
+        id: nextQueueItem.id
+      }
+    });
+    const gitlabApiInstance = await gitlabApi(database);
+    try {
+      await processElement(jiraAddon, gitlabApiInstance, nextQueueItem);
+    } catch (error) {
+      console.error(error);
+      try {
+        await database.WebhookFailures.create({
+          original: nextQueueItem,
+          error: { message: error.toString(), details: JSON.stringify(error) }
+        });
+        const {
+          web_url,
+          name_with_namespace
+        } = gitlabApiInstance.Projects.show(nextQueueItem.body.project.id);
+        await updateProject(database, nextQueueItem.body.project.id, {
+          name: name_with_namespace,
+          url: web_url,
+          status: 'sick'
+        });
+      } catch (fatalError) {
+        console.error(fatalError);
+      }
+    }
+
+    nextQueueItem = await database.WebhookQueue.findOne();
+  }
+
+  queueIsProcessing = false;
 }

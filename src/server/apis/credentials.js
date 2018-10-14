@@ -1,5 +1,5 @@
 // @flow
-import lowdb from '../lowdb';
+import type { DatabaseType } from '../models';
 
 export type GitlabCredential = {
   appUrl: string,
@@ -7,34 +7,39 @@ export type GitlabCredential = {
 };
 
 export type JiraCredential = {
-  clientKey: string
+  token: string
 };
 
-function loadDb(encryptionKey: string) {
-  return lowdb(encryptionKey, 'credentials', { jira: {}, gitlab: {} });
-}
-
-export function setCredential(
-  encryptionKey: string,
+export async function setCredential(
+  database: DatabaseType,
   key: 'gitlab' | string,
   credential: GitlabCredential | JiraCredential
 ) {
-  loadDb(encryptionKey)
-    .set(key, credential)
-    .write();
+  await database.Credentials.upsert({
+    key,
+    ...credential
+  });
 }
 
-export function getCredential(
-  encryptionKey: string,
+export async function getCredential(
+  database: DatabaseType,
   key: 'gitlab' | string
-): GitlabCredential | JiraCredential {
-  return loadDb(encryptionKey)
-    .get(key)
-    .value();
+): ?GitlabCredential | ?JiraCredential {
+  // $FlowFixMe
+  return await database.Credentials.findOne({
+    where: {
+      key
+    }
+  });
 }
 
-export function clearCredential(encryptionKey: string, key: 'gitlab' | string) {
-  loadDb(encryptionKey)
-    .unset(key)
-    .write();
+export async function clearCredential(
+  database: DatabaseType,
+  key: 'gitlab' | string
+) {
+  return await database.Credentials.destroy({
+    where: {
+      key
+    }
+  });
 }

@@ -1,135 +1,166 @@
 // @flow
-import compact from 'lodash/compact';
-import unique from 'lodash/uniq';
-import uniqueBy from 'lodash/uniqBy';
-import mapKeys from 'lodash/mapKeys';
+import Sequelize from 'sequelize';
+import logger from 'atlassian-connect-express/lib/internal/logger';
+import difference from 'lodash/difference';
+import mapKeys from 'map-keys-deep-lodash';
 import camelCase from 'lodash/camelCase';
 import GitlabApi from '../apis/gitlab';
-import transitionProjectApi from '../apis/transitionProject';
-import lowdb from '../lowdb';
+import initModels, { type DatabaseType } from '../models';
+import type { ProcessingProjectType } from './types';
 
 export type MessageType = {
-  encryptionKey: string,
+  init?: boolean,
+  url?: boolean,
   projectId: string
 };
 
-process.on('message', (message: MessageType) => {
-  if (message.projectId) {
-    loadGitlabProjectIssues(message.encryptionKey, message.projectId);
-  } else {
-    processIssues(message.encryptionKey);
-  }
-});
-
-function getMigrationQueueDb(encryptionKey: string) {
-  return lowdb(encryptionKey, 'migrationQueue', {
-    queue: [],
-    failures: [],
-    processingProjects: {}
+const databasePromise: Promise<DatabaseType> = new Promise((resolve) => {
+  process.on('message', (message: MessageType) => {
+    try {
+      if (message.init) {
+        // $FlowFixMe
+        const sequelizeDb = new Sequelize(message.url, { logger });
+        resolve(initModels(sequelizeDb).then(() => sequelizeDb.models));
+        processIssues();
+      } else if (message.projectId) {
+        loadGitlabProjectIssues(message.projectId);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   });
-}
+});
 
 let isProcessing = false;
 
-function getProjectToProcess(encryptionKey: string) {
-  const projects = getMigrationQueueDb(encryptionKey)
-    .get('processingProjects')
-    .value();
-  const projectKeys = Object.keys(projects).sort();
-  const projectId = projectKeys.find((key) => projects[key].isLoading);
-  return projects[projectId];
+async function getProjectToProcess() {
+  const db = await databasePromise;
+  const projects = await db.MigrationProjects.findAll({
+    where: {
+      isLoading: true
+    },
+    sort: 'projectId'
+  });
+  return projects[0];
 }
 
-function processIssues(encryptionKey: string) {
+async function processIssues() {
   if (isProcessing) return;
   isProcessing = true;
-  let project = getProjectToProcess(encryptionKey);
-  while (project) {
-    processIssue(
-      encryptionKey,
-      project.projectId,
-      project.completedCount,
-      project.totalCount
-    );
-    project = getProjectToProcess(encryptionKey);
+  try {
+    let project = await getProjectToProcess();
+    while (project) {
+      // $FlowFixMe
+      await processIssue(project);
+      project = await getProjectToProcess();
+    }
+  } catch (error) {
+    console.error(error);
+    // $FlowFixMe
+    process.send(error.toString());
+  } finally {
+    isProcessing = false;
   }
-  isProcessing = false;
 }
 
-function processIssue(
-  encryptionKey: string,
-  projectId: string,
-  index: number,
-  totalIssues: number
-) {
-  const transitionProjectDb = transitionProjectApi(encryptionKey, projectId);
-  const issue = transitionProjectDb.get(`issues[${index}]`).value();
-  const labels = transitionProjectDb.get('labels').value();
-  transitionProjectDb
-    .set('labels', unique(labels.concat(issue.labels || [])))
-    .write();
+async function processIssue(project: ProcessingProjectType) {
+  const { projectId, completedCount: index, totalCount } = project;
+  // $FlowFixMe
+  const database = await databasePromise;
+
+  const issue = await database.MigrationIssues.findOne({
+    where: {
+      projectId
+    },
+    offset: index
+  });
+  if (!issue) return;
+  const labels = await database.MigrationLabels.findAll({
+    where: {
+      projectId
+    }
+  });
+  const newLabels = difference(issue.labels, labels.map(({ label }) => label));
+  await database.MigrationLabels.bulkCreate(
+    newLabels.map((label) => ({ label, projectId }))
+  );
+
   if (issue.milestone) {
-    const milestones = transitionProjectDb.get('milestones').value();
-    transitionProjectDb
-      .set('milestones', uniqueBy(milestones.concat([issue.milestone]), 'id'))
-      .write();
+    await database.MigrationMilestones.upsert({
+      ...mapKeys(issue.milestone, (value, key) => camelCase(key)),
+      projectId
+    });
   }
-  const allUsers = transitionProjectDb.get('users').value();
   const issueUsers = issue.assignees || [];
   issueUsers.push(issue.author);
   issueUsers.push(issue.assignee);
-  transitionProjectDb
-    .set('users', uniqueBy(allUsers.concat(compact(issueUsers)), 'id'))
-    .write();
-  getMigrationQueueDb(encryptionKey)
-    .set(`processingProjects.${projectId}.completedCount`, index + 1)
-    .write();
-  if (index + 1 >= totalIssues) {
-    getMigrationQueueDb(encryptionKey)
-      .set(`processingProjects.${projectId}.isProcessing`, false)
-      .set(`processingProjects.${projectId}.isLoading`, false)
-      .set(`processingProjects.${projectId}.completedCount`, 0)
-      .write();
+  issueUsers.forEach(async (user) => {
+    await database.MigrationUsers.upsert({
+      ...mapKeys(user, (value, key) => camelCase(key)),
+      projectId
+    });
+  });
+  const updatedProject = {
+    ...project,
+    completedCount: index + 1
+  };
+  if (index + 1 >= totalCount) {
+    updatedProject.isProcessing = false;
+    updatedProject.isLoading = false;
+    updatedProject.completedCount = 0;
   }
+  await database.MigrationProjects.update(updatedProject, {
+    where: {
+      projectId
+    }
+  });
 }
 
-async function loadGitlabProjectIssues(
-  encryptionKey: string,
-  projectId: string
-) {
-  const migrationDb = getMigrationQueueDb(encryptionKey);
-  migrationDb
-    .set(`processingProjects.${projectId}`, {
-      projectId,
-      isProcessing: false,
-      isLoading: true,
-      completedCount: 0,
-      totalCount: 1,
-      gitlabProjectName: 'Loading...',
-      currentMessage: 'Loading'
-    })
-    .write();
-  const gitlabApi = GitlabApi(encryptionKey);
-  const transitionProjectDb = transitionProjectApi(encryptionKey, projectId);
+async function loadGitlabProjectIssues(projectId: string) {
+  const database = await databasePromise;
+  await database.MigrationProjects.create({
+    projectId,
+    isProcessing: false,
+    isLoading: true,
+    completedCount: 0,
+    failedCount: 0,
+    totalCount: 1,
+    currentMessage: 'Loading'
+  });
+  const gitlabApi = await GitlabApi(database);
   const projectMeta = await gitlabApi.Projects.show(projectId);
-  migrationDb
-    .set(
-      `processingProjects.${projectId}.gitlabProjectName`,
-      projectMeta.path_with_namespace
-    )
-    .write();
-  transitionProjectDb
-    .set('meta', mapKeys(projectMeta, (value, key) => camelCase(key)))
-    .write();
+  // $FlowFixMe
+  await database.MigrationProjects.update(
+    {
+      meta: mapKeys(projectMeta, (value, key) => camelCase(key))
+    },
+    {
+      where: {
+        projectId
+      }
+    }
+  );
   const issues = await gitlabApi.Issues.all({
     projectId
   });
-  migrationDb
-    .set(`processingProjects.${projectId}.totalCount`, issues.length)
-    .write();
-  transitionProjectDb.set('issues', issues).write();
+  await database.MigrationProjects.update(
+    {
+      totalCount: issues.length
+    },
+    {
+      where: {
+        projectId
+      }
+    }
+  );
+  await database.MigrationIssues.bulkCreate(
+    issues.map((issue) => ({
+      ...mapKeys(issue, (value, key) => camelCase(key)),
+      projectId
+    }))
+  );
 
   if (issues.length) {
-    processIssues(encryptionKey);
+    processIssues();
   }
 }
