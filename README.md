@@ -14,8 +14,12 @@
         <img src="https://img.shields.io/docker/build/simeonc/jira-gitlab-seneschal.svg" />
     </a>
 </p>
-
 A tool for migrating to and managing issues in JIRA and Git in GitLab.
+
+<a href="https://corp.tablecheck.com" style="display: flex; flex-direction: column; justify-content: center;">
+  <h3>Sponsored by TableCheck</h3>
+  <img src="https://corp.tablecheck.com/images/logo/tc-logo-color.svg" />
+</div>
 
 ### Migration Notes
 
@@ -26,7 +30,7 @@ The transitions scripts require you to enable "All statuses can transition to '.
 First time you run this product you need to update `config.json` to complete your own setup.
 This is a requirement for creating your own private add-on.
 
-Whether running in dev or production modes you need to provide a 32 character string as the value for `"credentialDbKey"` in `config.json`.
+Also you will need a local copy of PostgresSQL setup, the default database used in dev is `gitlab-jira-seneschal` so make sure that exists.
 
 If you are running in dev mode follow the instructions for "The Dev Loop" here; https://bitbucket.org/atlassian/atlassian-connect-express
 
@@ -34,13 +38,12 @@ If you are running in dev mode follow the instructions for "The Dev Loop" here; 
 
 When running in production the following ENV Vars should be defined as follows;
 
-| var                     | usage                                                        |
-| ----------------------- | ------------------------------------------------------------ |
-| `$PORT`                 | Server Port to run express server on                         |
-| `$APP_URL`              | Url that the addon will run on                               |
-| `$DATABASE_URL`         | Url of the Postgres database to connect to                   |
-| `$JIRA_HOST`            | Host domain of your Jira instance, can be a wildcard. If you need more than one in the whitelist I recommend editing the `config.json` file directly. eg `*.atlassian.net` will allow all cloud jira instances. |
-| `$LOWDB_CREDENTIAL_KEY` | A 32 character string to encode lowdb files when saving them to disk. |
+| var             | usage                                                        |
+| --------------- | ------------------------------------------------------------ |
+| `$PORT`         | Server Port to run express server on                         |
+| `$APP_URL`      | Url that the addon will run on                               |
+| `$DATABASE_URL` | Url of the Postgres database to connect to                   |
+| `$JIRA_HOST`    | Host domain of your Jira instance, can be a wildcard. If you need more than one in the whitelist I recommend editing the `config.json` file directly. eg `*.atlassian.net` will allow all cloud jira instances. |
 
 ### Releasing
 
