@@ -16,10 +16,11 @@
 </p>
 A tool for migrating to and managing issues in JIRA and Git in GitLab.
 
-<a href="https://corp.tablecheck.com" style="display: flex; flex-direction: column; justify-content: center;">
-  <h3>Sponsored by TableCheck</h3>
-  <img src="https://corp.tablecheck.com/images/logo/tc-logo-color.svg" />
+<div style="display: flex; flex-direction: column; justify-content: center;">
+    <h3><a href="https://corp.tablecheck.com">Sponsored by TableCheck</a></h3>
+  <a href="https://corp.tablecheck.com"><img width="260" src="https://corp.tablecheck.com/images/logo/tc-logo-color.svg" /></a>
 </div>
+
 
 ### Migration Notes
 
