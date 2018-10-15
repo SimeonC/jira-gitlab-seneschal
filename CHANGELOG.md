@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="2.1.0"></a>
+# [2.1.0](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.0.0...v2.1.0) (2018-10-15)
+
+
+### Bug Fixes
+
+* **datasource:** make sure all data persists ([04d73b4](https://github.com/SimeonC/jira-gitlab-seneschal/commit/04d73b4))
+* remove token comments ([34c2968](https://github.com/SimeonC/jira-gitlab-seneschal/commit/34c2968))
+
+
+### Features
+
+* **Jira:** add in config link and update nav permissions ([38e1fae](https://github.com/SimeonC/jira-gitlab-seneschal/commit/38e1fae))
+* **webhooks:** support multiple open/close/merge statuses ([77b98b8](https://github.com/SimeonC/jira-gitlab-seneschal/commit/77b98b8))
+* add cleanup cmd line script for failed/rolled back migrations ([0bcb47b](https://github.com/SimeonC/jira-gitlab-seneschal/commit/0bcb47b))
+
+
+
 <a name="2.0.0"></a>
 # [2.0.0](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v1.4.0...v2.0.0) (2018-10-09)
 
