@@ -2,6 +2,15 @@
   "name": "jira-gitlab-seneschal",
   "version": "2.0.0",
   "private": true,
+  "scripts": {
+    "start": "node build/server/index.js",
+    "start:dev": "AC_OPTS=force-dereg,force-reg nodemon --exec babel-node -- src/server/index.js",
+    "build:client": "node scripts/build.js",
+    "build:server": "babel --config -d ./build/server ./src/server -s",
+    "build": "npm run build:client && npm run build:server",
+    "test": "node scripts/test.js --env=jsdom",
+    "release": "standard-version && git push --follow-tags origin master && conventional-github-releaser -p angular"
+  },
   "dependencies": {
     "@atlaskit/avatar": "14.0.10",
     "@atlaskit/button": "9.0.8",
@@ -100,15 +109,6 @@
     "webpack-manifest-plugin": "1.3.2",
     "whatwg-fetch": "2.0.3"
   },
-  "scripts": {
-    "start": "node build/server/index.js",
-    "start:dev": "AC_OPTS=force-dereg,force-reg nodemon --exec babel-node -- src/server/index.js",
-    "build:client": "node scripts/build.js",
-    "build:server": "babel --config -d ./build/server ./src/server -s",
-    "build": "npm run build:client && npm run build:server",
-    "test": "node scripts/test.js --env=jsdom",
-    "release": "standard-version && git push --follow-tags origin master && conventional-github-releaser -p angular"
-  },
   "proxy": "http://localhost:8080/",
   "jest": {
     "collectCoverageFrom": [
@@ -159,7 +159,10 @@
     "babel-preset-es2015": "6.24.1",
     "babel-preset-stage-0": "6.24.1",
     "empty": "0.10.1",
+    "inquirer": "^6.2.0",
+    "inquirer-autocomplete-prompt": "^1.0.1",
     "ngrok": "2.3.0",
+    "progress": "^2.0.0",
     "webpack-hot-middleware": "2.24.2"
   }
 }
