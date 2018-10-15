@@ -7,8 +7,16 @@ export default [
       allowNull: false,
       primaryKey: true
     },
-    transitionStatusIds: {
-      type: DataTypes.JSON,
+    openStatusIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false
+    },
+    mergeStatusIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false
+    },
+    closeStatusIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: false
     }
   }

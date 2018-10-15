@@ -25,6 +25,7 @@ import createVersionsFromMilestones, {
 import type {
   WebhookMetadataType,
   WebhookProjectStatusType,
+  WebhookTransitionMapsType,
   WebhookTransitionsType
 } from './apis/webhooks';
 import projectMappingApi from './apis/projectMapping';
@@ -362,14 +363,18 @@ export default function(addon: *) {
     root: *,
     {
       jiraProjectKey,
-      transitionStatusIds
-    }: { jiraProjectKey: string, transitionStatusIds: WebhookTransitionsType },
+      openStatusIds = [],
+      closeStatusIds = [],
+      mergeStatusIds = []
+    }: WebhookTransitionMapsType,
     req: *
   ): WebhookMetadataType {
     await addon.schema.models.WebhookTransitionMaps.upsert({
       clientKey: req.context.clientKey,
       jiraProjectKey,
-      transitionStatusIds
+      openStatusIds,
+      closeStatusIds,
+      mergeStatusIds
     });
     return { success: true };
   }

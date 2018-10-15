@@ -180,34 +180,40 @@ export default async function processWebhookMergeRequest(
           transitionMap.find(
             ({ jiraProjectKey }) => jiraProjectKey === projectKey
           ) || {};
-        const transitionStatusId =
-          transitionStatusProject.transitionStatusIds[`${action}Id`];
-        if (transitionStatusId) {
-          try {
-            const issueTransitions = await jiraRequest(
-              jiraApi,
-              'get',
-              `/issue/${issueKey}/transitions`
-            );
-            const transition = issueTransitions.transitions.find(
-              (t) => t.to.id === transitionStatusId
-            );
-            if (transition) {
-              await jiraRequest(
+        const transitionStatusIds =
+          transitionStatusProject[`${action}StatusIds`];
+        if (transitionStatusIds && transitionStatusIds.length) {
+          for (let i = 0; i < transitionStatusIds.length; i += 1) {
+            try {
+              const issueTransitions = await jiraRequest(
                 jiraApi,
-                'post',
-                `/issue/${issueKey}/transitions`,
-                {
-                  transition: {
-                    id: transition.id
-                  }
-                }
+                'get',
+                `/issue/${issueKey}/transitions`
               );
+              const transition = issueTransitions.transitions.find(
+                (t) => t.to.id === transitionStatusIds[i]
+              );
+              if (transition) {
+                const transitionAttempt = await jiraRequest(
+                  jiraApi,
+                  'post',
+                  `/issue/${issueKey}/transitions`,
+                  {
+                    transition: {
+                      id: transition.id
+                    }
+                  }
+                );
+                if (!transitionAttempt || !transitionAttempt.errors) {
+                  // This is a successful attempt, don't try any more transitions
+                  break;
+                }
+              }
+            } catch (error) {
+              // This is not really an error per say, it's just not good enough to fail us.
+              // Maybe it hasn't been setup to pick up transitions on this project yet
+              console.error('failed transition', error);
             }
-          } catch (error) {
-            // This is not really an error per say, it's just not good enough to fail us.
-            // Maybe it hasn't been setup to pick up transitions on this project yet
-            console.error('failed transition', error);
           }
         }
       })

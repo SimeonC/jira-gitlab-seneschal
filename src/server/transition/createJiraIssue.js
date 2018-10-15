@@ -222,7 +222,7 @@ export default async function createJiraIssue(
   await gitlabApi.Issues.edit(gitlabProjectId, gitlabIssueIid, {
     description: `Migrated to: [${jiraIssue.key}](${jiraBaseUrl}/browse/${
       jiraIssue.key
-    })\n\n  ${description}`
+    })\n\n${description}`
   });
 
   try {

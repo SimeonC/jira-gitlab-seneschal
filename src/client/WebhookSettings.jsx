@@ -16,17 +16,19 @@ import Spinner from '@atlaskit/spinner';
 import Select from '@atlaskit/select';
 import sanitizeData from './sanitizeData';
 
+type StatusType = {
+  id: string
+};
+
 const MetadataQuery = gql`
   query WebhookMetadata {
     getWebhookMetadata {
       transitionKeywords
       transitionMap {
         jiraProjectKey
-        transitionStatusIds {
-          mergeId
-          openId
-          closeId
-        }
+        mergeStatusIds
+        openStatusIds
+        closeStatusIds
       }
     }
   }
@@ -68,9 +70,9 @@ class WebhookSettings extends Component<
   {
     transitionKeywords?: string[],
     jiraProjectKey?: string,
-    newOpenStatus?: *,
-    newMergeStatus?: *,
-    newCloseStatus?: *
+    newOpenStatuses?: StatusType[],
+    newMergeStatuses?: StatusType[],
+    newCloseStatuses?: StatusType[]
   }
 > {
   state = {};
@@ -81,21 +83,21 @@ class WebhookSettings extends Component<
     });
   };
 
-  selectOpenStatus = (option) => {
+  selectOpenStatus = (options) => {
     this.setState({
-      newOpenStatus: option
+      newOpenStatuses: options
     });
   };
 
-  selectMergeStatus = (option) => {
+  selectMergeStatus = (options) => {
     this.setState({
-      newMergeStatus: option
+      newMergeStatuses: options
     });
   };
 
-  selectCloseStatus = (option) => {
+  selectCloseStatus = (options) => {
     this.setState({
-      newCloseStatus: option
+      newCloseStatuses: options
     });
   };
 
@@ -110,19 +112,17 @@ class WebhookSettings extends Component<
   createTransition = () => {
     const {
       jiraProjectKey,
-      newOpenStatus = {},
-      newMergeStatus = {},
-      newCloseStatus = {}
+      newOpenStatuses = [],
+      newMergeStatuses = [],
+      newCloseStatuses = []
     } = this.state;
     const { createTransition } = this.props;
     if (!jiraProjectKey) return;
     const newTransition = {
       jiraProjectKey,
-      transitionStatusIds: {
-        mergeId: newMergeStatus.id,
-        openId: newOpenStatus.id,
-        closeId: newCloseStatus.id
-      }
+      mergeStatusIds: newMergeStatuses.map(({ id }) => id),
+      openStatusIds: newOpenStatuses.map(({ id }) => id),
+      closeStatusIds: newCloseStatuses.map(({ id }) => id)
     };
     createTransition({
       variables: sanitizeData(newTransition)
@@ -155,15 +155,19 @@ class WebhookSettings extends Component<
         map.__meta = map.__meta || {};
         map.__meta.name = project.name;
         ['open', 'close', 'merge'].forEach((statusKey) => {
-          const idKey = `${statusKey}Id`;
-          if (map.transitionStatusIds[idKey]) {
-            const status = statuses.find(
-              ({ id }) => map.transitionStatusIds[idKey] === id
-            );
-            if (status) {
-              map.__meta[`${statusKey}Name`] = status.name;
-              map.__meta[`${statusKey}Color`] = status.statusCategory.colorName;
-            }
+          map.__meta[`${statusKey}Statuses`] =
+            map.__meta[`${statusKey}Statuses`] || [];
+          const idKey = `${statusKey}StatusIds`;
+          if (map[idKey]) {
+            map[idKey].forEach((statusId) => {
+              const status = statuses.find(({ id }) => statusId === id);
+              if (status) {
+                map.__meta[`${statusKey}Statuses`].push({
+                  name: status.name,
+                  color: status.statusCategory.colorName
+                });
+              }
+            });
           }
         });
       }
@@ -199,24 +203,15 @@ class WebhookSettings extends Component<
             {transitionMap.map((transitionMap) => (
               <tr key={transitionMap.jiraProjectKey}>
                 <td>{transitionMap.__meta.name}</td>
-                <td>
-                  <Status
-                    text={transitionMap.__meta.openName}
-                    color={transitionMap.__meta.openColor}
-                  />
-                </td>
-                <td>
-                  <Status
-                    text={transitionMap.__meta.mergeName}
-                    color={transitionMap.__meta.mergeColor}
-                  />
-                </td>
-                <td>
-                  <Status
-                    text={transitionMap.__meta.closeName}
-                    color={transitionMap.__meta.closeColor}
-                  />
-                </td>
+                {['open', 'merge', 'close'].map((key) => (
+                  <td key={key}>
+                    {transitionMap.__meta[`${key}Statuses`].map(
+                      ({ name, color }) => (
+                        <Status key={name} text={name} color={color} />
+                      )
+                    )}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
@@ -242,6 +237,7 @@ class WebhookSettings extends Component<
             >
               <Select
                 options={statuses}
+                isMulti
                 getOptionValue={getStatusOptionValue}
                 getOptionLabel={getStatusOptionLabel}
                 onChange={this.selectOpenStatus}
@@ -253,6 +249,7 @@ class WebhookSettings extends Component<
             >
               <Select
                 options={statuses}
+                isMulti
                 getOptionValue={getStatusOptionValue}
                 getOptionLabel={getStatusOptionLabel}
                 onChange={this.selectMergeStatus}
@@ -264,6 +261,7 @@ class WebhookSettings extends Component<
             >
               <Select
                 options={statuses}
+                isMulti
                 getOptionValue={getStatusOptionValue}
                 getOptionLabel={getStatusOptionLabel}
                 onChange={this.selectCloseStatus}
@@ -305,11 +303,15 @@ export default () => (
         mutation={gql`
           mutation SaveTransition(
             $jiraProjectKey: String!
-            $transitionStatusIds: WebhookTransitionsInput!
+            $openStatusIds: [String!]!
+            $mergeStatusIds: [String!]!
+            $closeStatusIds: [String!]!
           ) {
             upsertWebhookTransitionMap(
               jiraProjectKey: $jiraProjectKey
-              transitionStatusIds: $transitionStatusIds
+              openStatusIds: $openStatusIds
+              closeStatusIds: $closeStatusIds
+              mergeStatusIds: $mergeStatusIds
             ) {
               success
             }

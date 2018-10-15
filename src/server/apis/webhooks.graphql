@@ -6,7 +6,9 @@ type WebhookTransitions {
 
 type WebhookTransitionMap {
   jiraProjectKey: String!
-  transitionStatusIds: WebhookTransitions!
+  openStatusIds: [String!]!
+  mergeStatusIds: [String!]!
+  closeStatusIds: [String!]!
 }
 
 type WebhookMetadata {
@@ -21,18 +23,13 @@ type WebhookStatus {
   status: String!
 }
 
-input WebhookTransitionsInput {
-  openId: String
-  mergeId: String
-  closeId: String
-}
-
 input WebhookTransitionMapInput {
   jiraProjectKey: String!
-  transitionStatusIds: WebhookTransitionsInput!
+  openStatusIds: [String!]!
+  mergeStatusIds: [String!]!
+  closeStatusIds: [String!]!
 }
 
 input WebhookMetadataInput {
   transitionKeywords: [String!]!
-  transitionMap: [WebhookTransitionMapInput!]!
 }

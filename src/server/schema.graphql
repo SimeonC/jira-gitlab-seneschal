@@ -95,7 +95,9 @@ type Mutations {
   setWebhookMetadata(transitionKeywords: [String!]): SuccessResponse
   upsertWebhookTransitionMap(
     jiraProjectKey: String!
-    transitionStatusIds: WebhookTransitionsInput!
+    openStatusIds: [String!]
+    closeStatusIds: [String!]
+    mergeStatusIds: [String!]
   ): SuccessResponse
   deleteWebhookTransitionMap(jiraProjectKey: String!): SuccessResponse
   createGitlabWebhooks(gitlabProjectId: String!): WebhookStatus
