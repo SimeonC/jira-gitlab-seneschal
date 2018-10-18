@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="2.1.1"></a>
+## [2.1.1](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.1.0...v2.1.1) (2018-10-18)
+
+
+### Bug Fixes
+
+* **Gitlab:** gitlab projects should be listed ([321206e](https://github.com/SimeonC/jira-gitlab-seneschal/commit/321206e))
+
+
+
 <a name="2.1.0"></a>
 # [2.1.0](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.0.0...v2.1.0) (2018-10-15)
 
