@@ -160,7 +160,6 @@ export default function(addon: *) {
   async function gitlabProjects() {
     const api = await gitlabApi(addon.schema.models);
     const projects = await api.Projects.all({
-      membership: true,
       archived: false,
       simple: true
     });

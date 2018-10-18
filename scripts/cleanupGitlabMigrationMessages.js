@@ -37,7 +37,6 @@ inquirer
           source: (answersSoFar, input) => {
             return api.Projects.all({
               search: input,
-              membership: true,
               archived: false,
               simple: true
             }).then((returnedProjects) => {
