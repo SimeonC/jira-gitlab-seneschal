@@ -34,7 +34,15 @@ function transformImages(markdownString: string, webUrl: string) {
   );
 }
 
-function transformLists(markdownString: string) {
+function transformLinks(markdownString: string, webUrl: string) {
+  return transformByRegex(
+    markdownString,
+    /\[([^\]]+)]\(([^)]+)\)/gim,
+    (currentMatch) => `[${currentMatch[1]}|${currentMatch[2]}]`
+  );
+}
+
+function transformLists(markdownString: string, webUrl: string) {
   return transformByRegex(
     markdownString,
     /\n([ ]*)([*\-+]|[0-9]+.)/gim,
@@ -46,33 +54,51 @@ function transformLists(markdownString: string) {
   );
 }
 
-function transformFormatting(markdownString: string) {
+function transformFormatting(markdownString: string, webUrl: string) {
   const strikethrough = transformByRegex(markdownString, /~~/gim, () => '-');
   const emphasis = transformByRegex(
     strikethrough,
-    /([^*\n])\*([^*\n]+)\*([^*])/gim,
+    /(^|[^*\n])\*([^*\n]+)\*([^*]|$)/gim,
     (currentMatch) => `${currentMatch[1]}_${currentMatch[2]}_${currentMatch[3]}`
   );
   const firstBoldFix = transformByRegex(
     emphasis,
-    /([^*])\*\*([^*])/gim,
+    /(^|[^*])\*\*([^*]|$)/gim,
     (currentMatch) => `${currentMatch[1]}*${currentMatch[2]}`
   );
   return transformByRegex(
     firstBoldFix,
-    /([^_])__([^_])/gim,
+    // this intentionally ignores a single case of __*two*__ which will loose emphasis
+    /(^|[^_])_{2,3}([^_]|$)/gim,
     (currentMatch) => `${currentMatch[1]}*${currentMatch[2]}`
   );
 }
 
-function transformHeaders(markdownString: string) {
+function transformHeaders(markdownString: string, webUrl: string) {
   return transformByRegex(
     markdownString,
-    /\n[\W]*([#]+)/gim,
+    /(^|\n)+[\W]*([#]+)\W*/gim,
     (currentMatch) => {
-      const headerSize = currentMatch[1].length;
-      return `\nh${headerSize}. `;
+      const headerSize = currentMatch[0].replace(/[^#]+/g, '').length;
+      return `${currentMatch[1]}h${headerSize}. `;
     }
+  );
+}
+
+function transformInlineCode(markdownString: string, webUrl: string) {
+  return transformByRegex(
+    markdownString,
+    /(^|[^`])`([^`]+)`([^`]|$)/gi,
+    (currentMatch) =>
+      `${currentMatch[1]}{{${currentMatch[2]}}}${currentMatch[3]}`
+  );
+}
+
+function transformMultilineCode(markdownString: string, webUrl: string) {
+  return transformByRegex(
+    markdownString,
+    /```([\S\s]+?)```/gim,
+    (currentMatch) => `{code}${currentMatch[1]}{code}`
   );
 }
 
@@ -84,10 +110,15 @@ export default async function markdownTransform(
   try {
     const { web_url } = await gitlabApi.Projects.show(projectId);
 
-    const imageFixedMarkdown = transformImages(markdownString, web_url);
-    const headerFixedMarkdown = transformHeaders(imageFixedMarkdown);
-    const formatFixedMarkdown = transformFormatting(headerFixedMarkdown);
-    return transformLists(formatFixedMarkdown);
+    return [
+      transformHeaders,
+      transformImages,
+      transformLinks,
+      transformFormatting,
+      transformLists,
+      transformInlineCode,
+      transformMultilineCode
+    ].reduce((markdown, func) => func(markdown, web_url), markdownString);
   } catch (error) {
     return markdownString;
   }
