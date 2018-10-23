@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="2.1.2"></a>
+## [2.1.2](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.1.1...v2.1.2) (2018-10-23)
+
+
+### Bug Fixes
+
+* markdownTransform ([810b12f](https://github.com/SimeonC/jira-gitlab-seneschal/commit/810b12f)), closes [#8](https://github.com/SimeonC/jira-gitlab-seneschal/issues/8)
+
+
+
 <a name="2.1.1"></a>
 ## [2.1.1](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.1.0...v2.1.1) (2018-10-18)
 
