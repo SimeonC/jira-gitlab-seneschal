@@ -15,6 +15,7 @@ import webhooksSetup from './webhooks';
 import modelsSetup from './models';
 import { processQueue as processWebhookQueue } from './webhooks/queue';
 import { processQueue as processMigrationQueue } from './transition/migrationQueue';
+import { version } from '../../package.json';
 
 const reactIndexFile = fs.readFileSync(
   path.join(__dirname, '../../build/client', 'index.html')
@@ -126,6 +127,12 @@ app.get('/', (req, res) => {
       res.redirect('/atlassian-connect.json');
     }
   });
+});
+
+// Health Endpoint for load monitoring tools
+app.get('/version', (req, res) => {
+  res.status(200);
+  res.send(version);
 });
 
 // Health Endpoint for load monitoring tools
