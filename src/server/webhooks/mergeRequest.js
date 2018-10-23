@@ -8,25 +8,48 @@ import type { WebhookMetadataType } from '../apis/webhooks';
 import { WEBHOOK_ICON_MAP_WIP_KEY } from '../apis/webhooks';
 import iconMap from '../../../iconMap.json';
 
-function processCommits(
+function extractTickets(regex: string, search: string) {
+  const tickets = [];
+  const regexp = new RegExp(regex, 'ig');
+  let currentMatch;
+  while ((currentMatch = regexp.exec(search))) {
+    tickets.push(currentMatch[1]);
+  }
+  return tickets;
+}
+
+export function processCommits(
   transitionKeywords: string[],
   jiraProjectKeys: string[],
   commits: { title: string, message: string }[]
 ): { issueKey: string, shouldTransition: boolean }[] {
-  const matchRegexString = `(${transitionKeywords.join(
+  const looseMatchRegexString = `((?:${transitionKeywords.join(
     '|'
-  )})*[ ]*((${jiraProjectKeys.join('|')})\-[1-9][0-9]*)`;
+  )}|,| and )[ ])*((?:(?:(?:${jiraProjectKeys.join(
+    '|'
+  )})-[1-9][0-9]*)(?:|(?:,| and) )+)+)`;
+  const ticketMatchRegexString = `(?:^|\\s)((?:${jiraProjectKeys.join(
+    '|'
+  )})-[1-9][0-9]*)`;
   const issueMatches = commits.reduce(
     (matches: { [string]: boolean }, commit) => {
       let currentMatch;
-      const regexp = new RegExp(matchRegexString, 'ig');
+      const regexp = new RegExp(looseMatchRegexString, 'ig');
       while ((currentMatch = regexp.exec(commit.title))) {
-        matches[currentMatch[2]] =
-          matches[currentMatch[2]] || Boolean(currentMatch[1]);
+        const isTransition = Boolean(currentMatch[1]);
+        extractTickets(ticketMatchRegexString, currentMatch[2]).forEach(
+          (ticketKey) => {
+            matches[ticketKey] = matches[ticketKey] || isTransition;
+          }
+        );
       }
       while ((currentMatch = regexp.exec(commit.message))) {
-        matches[currentMatch[2]] =
-          matches[currentMatch[2]] || Boolean(currentMatch[1]);
+        const isTransition = Boolean(currentMatch[1]);
+        extractTickets(ticketMatchRegexString, currentMatch[2]).forEach(
+          (ticketKey) => {
+            matches[ticketKey] = matches[ticketKey] || isTransition;
+          }
+        );
       }
       return matches;
     },
