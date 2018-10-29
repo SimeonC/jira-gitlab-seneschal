@@ -21,8 +21,8 @@ type GitlabMilestone {
   project_id: Int
   group_id: Int
   title: String!
-  description: String!
-  state: String!
+  description: String
+  state: String
   due_date: String
   start_date: String
   web_url: String!
@@ -40,8 +40,8 @@ type GitlabIssue {
   iid: Int!
   project_id: Int!
   title: String!
-  description: String!
-  state: String!
+  description: String
+  state: String
   labels: [String!]
   milestone: GitlabMilestone
   assignees: [GitlabUser!]
