@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="2.1.5"></a>
+## [2.1.5](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.1.4...v2.1.5) (2018-10-29)
+
+
+### Bug Fixes
+
+* **apis:** remove unecessary graphql requires ([ee8e047](https://github.com/SimeonC/jira-gitlab-seneschal/commit/ee8e047))
+* **webhooks:** prevent unecessary editing of comments ([68d3f5c](https://github.com/SimeonC/jira-gitlab-seneschal/commit/68d3f5c)), closes [#9](https://github.com/SimeonC/jira-gitlab-seneschal/issues/9)
+
+
+
 <a name="2.1.4"></a>
 ## [2.1.4](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.1.3...v2.1.4) (2018-10-23)
 
