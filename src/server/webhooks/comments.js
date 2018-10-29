@@ -22,14 +22,16 @@ export default async function processWebhookComment(
     issues
   };
 
-  await gitlabApi.MergeRequestNotes.edit(
-    metadata.projectId,
-    metadata.mergeRequestId,
-    id,
-    {
-      body: newText
-    }
-  );
+  if (newText) {
+    await gitlabApi.MergeRequestNotes.edit(
+      metadata.projectId,
+      metadata.mergeRequestId,
+      id,
+      {
+        body: newText
+      }
+    );
+  }
   // $FlowFixMe Async Promise/Object type conflict
   return metadata;
 }

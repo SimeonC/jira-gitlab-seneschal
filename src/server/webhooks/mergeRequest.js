@@ -276,7 +276,7 @@ export default async function processWebhookMergeRequest(
     );
 
     let newMergeRequestDescription;
-    if (new RegExp(gitlabJiraLinksHeaderRegexp).test(newText)) {
+    if (newText && new RegExp(gitlabJiraLinksHeaderRegexp).test(newText)) {
       newMergeRequestDescription = newText.replace(
         new RegExp(
           `<details>[^<]+${gitlabJiraLinksHeaderRegexp}[^<]+<\\/details>`,
@@ -285,7 +285,7 @@ export default async function processWebhookMergeRequest(
         newSummary
       );
     } else {
-      newMergeRequestDescription = `${newText}\n\n${newSummary}`;
+      newMergeRequestDescription = `${newText || description}\n\n${newSummary}`;
     }
 
     await gitlabApi.MergeRequests.edit(
