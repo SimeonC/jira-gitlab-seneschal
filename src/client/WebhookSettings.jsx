@@ -2,6 +2,7 @@
 import React, { Component } from 'react';
 import { Query, Mutation } from 'react-apollo';
 import gql from 'graphql-tag';
+import styled from 'styled-components';
 
 import Form, {
   Field,
@@ -51,6 +52,12 @@ const JiraQuery = gql`
   }
 `;
 
+const StatusTableCell = styled.td`
+  > *:not(:last-child) {
+    margin-right: 6px;
+  }
+`;
+
 const getProjectOptionValue = (option) => option.key;
 const getProjectOptionLabel = (option) => `${option.key} - ${option.name}`;
 
@@ -62,7 +69,7 @@ const getStatusOptionLabel = (option) => (
 class WebhookSettings extends Component<
   {
     saveMetadata: any,
-    createTransition: any,
+    upsertTransition: any,
     data: *,
     jiraData: *,
     isSaving: boolean
@@ -116,7 +123,7 @@ class WebhookSettings extends Component<
       newMergeStatuses = [],
       newCloseStatuses = []
     } = this.state;
-    const { createTransition } = this.props;
+    const { upsertTransition } = this.props;
     if (!jiraProjectKey) return;
     const newTransition = {
       jiraProjectKey,
@@ -124,7 +131,7 @@ class WebhookSettings extends Component<
       openStatusIds: newOpenStatuses.map(({ id }) => id),
       closeStatusIds: newCloseStatuses.map(({ id }) => id)
     };
-    createTransition({
+    upsertTransition({
       variables: sanitizeData(newTransition)
     });
   };
@@ -155,8 +162,7 @@ class WebhookSettings extends Component<
         map.__meta = map.__meta || {};
         map.__meta.name = project.name;
         ['open', 'close', 'merge'].forEach((statusKey) => {
-          map.__meta[`${statusKey}Statuses`] =
-            map.__meta[`${statusKey}Statuses`] || [];
+          map.__meta[`${statusKey}Statuses`] = [];
           const idKey = `${statusKey}StatusIds`;
           if (map[idKey]) {
             map[idKey].forEach((statusId) => {
@@ -201,18 +207,59 @@ class WebhookSettings extends Component<
           </thead>
           <tbody>
             {transitionMap.map((transitionMap) => (
-              <tr key={transitionMap.jiraProjectKey}>
-                <td>{transitionMap.__meta.name}</td>
-                {['open', 'merge', 'close'].map((key) => (
-                  <td key={key}>
-                    {transitionMap.__meta[`${key}Statuses`].map(
-                      ({ name, color }) => (
-                        <Status key={name} text={name} color={color} />
-                      )
+              <Mutation
+                key={transitionMap.jiraProjectKey}
+                mutation={gql`
+                  mutation DeleteTransitionMap($jiraProjectKey: String!) {
+                    deleteWebhookTransitionMap(
+                      jiraProjectKey: $jiraProjectKey
+                    ) {
+                      success
+                    }
+                  }
+                `}
+                variables={{ jiraProjectKey: transitionMap.jiraProjectKey }}
+                refetchQueries={['WebhookMetadata']}
+              >
+                {(deleteTransitionMap, { loading: isDeletingTransition }) => (
+                  <tr>
+                    <td>
+                      {transitionMap.__meta ? (
+                        transitionMap.__meta.name
+                      ) : (
+                        <span>
+                          Key: <b>{transitionMap.jiraProjectKey}</b>
+                        </span>
+                      )}
+                    </td>
+                    {!transitionMap.__meta ? (
+                      <td colSpan="3">
+                        Project may have been renamed or deleted, please
+                        re-create
+                      </td>
+                    ) : (
+                      ['open', 'merge', 'close'].map((key) => (
+                        <StatusTableCell key={key}>
+                          {transitionMap.__meta[`${key}Statuses`].map(
+                            ({ name, color }) => (
+                              <Status key={name} text={name} color={color} />
+                            )
+                          )}
+                        </StatusTableCell>
+                      ))
                     )}
-                  </td>
-                ))}
-              </tr>
+                    <td>
+                      <Button
+                        appearance="danger"
+                        onClick={() => deleteTransitionMap()}
+                        isLoading={isDeletingTransition}
+                      >
+                        Delete
+                      </Button>
+                    </td>
+                  </tr>
+                )}
+              </Mutation>
             ))}
           </tbody>
         </table>
@@ -301,7 +348,7 @@ export default () => (
     {(saveMetadata, { loading: isSaving, error: saveError }) => (
       <Mutation
         mutation={gql`
-          mutation SaveTransition(
+          mutation UpsertTransition(
             $jiraProjectKey: String!
             $openStatusIds: [String!]!
             $mergeStatusIds: [String!]!
@@ -320,7 +367,7 @@ export default () => (
         refetchQueries={['WebhookMetadata']}
       >
         {(
-          createTransition,
+          upsertTransitionMap,
           { loading: isSavingTransition, error: saveTransitionError }
         ) => (
           <Query query={JiraQuery}>
@@ -337,7 +384,7 @@ export default () => (
                   return (
                     <WebhookSettings
                       saveMetadata={saveMetadata}
-                      createTransition={createTransition}
+                      upsertTransition={upsertTransitionMap}
                       data={data}
                       jiraData={jiraData}
                       isSaving={isSaving || isSavingTransition}
