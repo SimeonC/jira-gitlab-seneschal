@@ -127,7 +127,7 @@ async function buildGitlabLinksSummary(
     'get',
     `/search?jql=issuekey in (${issueKeys.join(',')})&fields=issuetype,summary`
   );
-  const issueTableContent = issueData.issues.map((issue) => {
+  const issueTableContent = (issueData.issues || []).map((issue) => {
     return `| [${issue.key}](${baseUrl}/browse/${issue.key}) | ${
       issue.fields.summary
     } |`;
