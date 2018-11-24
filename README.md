@@ -1,16 +1,16 @@
 # jira-gitlab-seneschal
 
 <p align="center">
-    <a href="#docker-stars" alt="Stars on docker">
+    <a href="https://hub.docker.com/r/simeonc/jira-gitlab-seneschal/builds/" alt="Stars on docker">
         <img src="https://img.shields.io/docker/stars/simeonc/jira-gitlab-seneschal.svg" />
     </a>
-    <a href="#docker-pulls" alt="Pulls on docker">
+    <a href="https://hub.docker.com/r/simeonc/jira-gitlab-seneschal/builds/" alt="Pulls on docker">
         <img src="https://img.shields.io/docker/pulls/simeonc/jira-gitlab-seneschal.svg" />
     </a>
-    <a href="#docker-auto-build" alt="Docker Automated Build">
+    <a href="https://hub.docker.com/r/simeonc/jira-gitlab-seneschal/builds/" alt="Docker Automated Build">
         <img src="https://img.shields.io/docker/automated/simeonc/jira-gitlab-seneschal.svg" />
     </a>
-    <a href="#docker-status" alt="Docker Status">
+    <a href="https://hub.docker.com/r/simeonc/jira-gitlab-seneschal/builds/" alt="Docker Status">
         <img src="https://img.shields.io/docker/build/simeonc/jira-gitlab-seneschal.svg" />
     </a>
 </p>
