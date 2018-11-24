@@ -110,7 +110,7 @@ export async function processQueue(jiraAddon: *) {
         id: nextQueueItem.id
       }
     });
-    const gitlabApiInstance = await gitlabApi(database);
+    const gitlabApiInstance = await gitlabApi(database, jiraAddon);
     try {
       await processElement(jiraAddon, gitlabApiInstance, nextQueueItem);
     } catch (error) {

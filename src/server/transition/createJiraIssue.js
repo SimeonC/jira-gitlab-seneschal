@@ -22,14 +22,17 @@ function transformLabels(labels: string[]) {
 }
 
 export default async function createJiraIssue(
-  database: DatabaseType,
-  jiraApi: *,
-  jiraBaseUrl: string,
+  jiraAddon: *,
   gitlabProjectId: string,
   gitlabIssueIid: string,
   logger: (message: string) => void
 ) {
-  const gitlabApi = await GitlabApi(database);
+  const { api: jiraApi, baseUrl: jiraBaseUrl } = await initJiraApi(
+    jiraAddon,
+    gitlabProjectId
+  );
+  const database: DatabaseType = jiraAddon.schema.models;
+  const gitlabApi = await GitlabApi(database, jiraAddon);
 
   const mappingQueryOptions = {
     where: {

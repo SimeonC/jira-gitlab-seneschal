@@ -123,9 +123,14 @@ export async function startProcessingProject(
     },
     queryOptions
   );
-  await setCredential(database, `${JIRA_GITLAB_PROJECT_KEY}-${projectId}`, {
-    token: clientKey
-  });
+  await setCredential(
+    database,
+    jiraAddon.config.CREDENTIAL_ENCRYPTION_KEY(),
+    `${JIRA_GITLAB_PROJECT_KEY}-${projectId}`,
+    {
+      token: clientKey
+    }
+  );
   const issues = await database.MigrationIssues.findAll(queryOptions);
   await database.MigrationProjects.update(
     {
@@ -179,6 +184,7 @@ async function initJiraApi(
 ): { api: *, baseUrl: string } {
   const jiraCredentials: JiraCredential = (await getCredential(
     addon.schema.models,
+    addon.config.CREDENTIAL_ENCRYPTION_KEY(),
     `${JIRA_GITLAB_PROJECT_KEY}-${gitlabProjectId}`
   ): any);
   // $FlowFixMe
@@ -225,10 +231,6 @@ async function processQueueElement(jiraAddon: *, queueElement: QueueElement) {
     }
   };
   const database = jiraAddon.schema.models;
-  const { api: jiraApi, baseUrl: jiraBaseUrl } = await initJiraApi(
-    jiraAddon,
-    queueElement.projectId
-  );
 
   await database.MigrationProjects.update(
     {
@@ -238,9 +240,7 @@ async function processQueueElement(jiraAddon: *, queueElement: QueueElement) {
   );
   try {
     await createJiraIssue(
-      jiraAddon.schema.models,
-      jiraApi,
-      jiraBaseUrl,
+      jiraAddon,
       queueElement.projectId,
       queueElement.issueIid,
       async (message) => {

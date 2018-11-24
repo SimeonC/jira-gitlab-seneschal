@@ -49,7 +49,8 @@
         "store": {
             "type": "postgres",
             "url": "postgres://localhost:5432/jira-gitlab-seneschal"
-        }
+        },
+        "CREDENTIAL_ENCRYPTION_KEY": "put-your-key-here-thats-32-chars"
     },
     // This is the production add-on configuration, which is enabled by setting
     // the NODE_ENV=production environment variable.
@@ -70,7 +71,8 @@
         // Jira instance(s). Can take wildcards like *.atlassian.net
         "whitelist": [
             "$JIRA_HOST"
-        ]
+        ],
+        "CREDENTIAL_ENCRYPTION_KEY": "$CREDENTIAL_ENCRYPTION_KEY"
     },
     "product": "jira"
 }

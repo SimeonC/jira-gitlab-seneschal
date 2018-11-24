@@ -17,15 +17,17 @@ const GITLAB_SECRET_TOKEN_PASSWORD = 'D+_"WqXsx_#]indVNBP?M3*7?/bnt&hB';
 
 export async function createWebhooks(
   database: DatabaseType,
+  encryptionKey: string,
   gitlabProjectId: string,
   selfBaseUrl: string,
   clientKey: string
 ): WebhookProjectStatusType {
   const { appUrl }: GitlabCredential = (await getCredential(
     database,
+    encryptionKey,
     'gitlab'
   ): any);
-  const gitlab = await gitlabApi(database);
+  const gitlab = await gitlabApi(database, encryptionKey);
   const currentProjectWebhooks = await gitlab.ProjectHooks.all(gitlabProjectId);
 
   const key = `${kebabCase(

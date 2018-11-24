@@ -127,7 +127,11 @@ async function loadGitlabProjectIssues(projectId: string) {
     totalCount: 1,
     currentMessage: 'Loading'
   });
-  const gitlabApi = await GitlabApi(database);
+  const gitlabApi = await GitlabApi(database, {
+    config: {
+      CREDENTIAL_ENCRYPTION_KEY: () => process.env.CREDENTIAL_ENCRYPTION_KEY
+    }
+  });
   const projectMeta = await gitlabApi.Projects.show(projectId);
   // $FlowFixMe
   await database.MigrationProjects.update(

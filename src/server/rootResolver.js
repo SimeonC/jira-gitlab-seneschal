@@ -53,9 +53,9 @@ process.on('SIGINT', () => cleanExit('SIGINT')); // catch ctrl-c
 process.on('SIGUSR2', () => cleanExit('SIGUSR2')); // catch ctrl-c
 process.on('SIGTERM', () => cleanExit('SIGTERM')); // catch kill
 
-async function testGitlabCredentials(database: DatabaseType) {
+async function testGitlabCredentials(database: DatabaseType, jiraAddon: *) {
   try {
-    const api = await gitlabApi(database);
+    const api = await gitlabApi(database, jiraAddon);
     await api.Users.current();
     return true;
   } catch (err) {
@@ -73,7 +73,7 @@ export default function(addon: *) {
 
   async function isSetup() {
     return {
-      success: await testGitlabCredentials(database)
+      success: await testGitlabCredentials(database, addon)
     };
   }
 
@@ -158,7 +158,7 @@ export default function(addon: *) {
   }
 
   async function gitlabProjects() {
-    const api = await gitlabApi(addon.schema.models);
+    const api = await gitlabApi(addon.schema.models, addon);
     const projects = await api.Projects.all({
       archived: false,
       simple: true
@@ -305,7 +305,12 @@ export default function(addon: *) {
     { appUrl, token }: { appUrl: string, token: string }
   ) {
     try {
-      await setCredential(addon.schema.models, 'gitlab', { appUrl, token });
+      await setCredential(
+        addon.schema.models,
+        addon.config.CREDENTIAL_ENCRYPTION_KEY(),
+        'gitlab',
+        { appUrl, token }
+      );
       return {
         success: testGitlabCredentials(addon.schema.models)
       };
@@ -401,6 +406,7 @@ export default function(addon: *) {
   ): WebhookProjectStatusType {
     return createWebhooks(
       addon.schema.models,
+      addon.config.CREDENTIAL_ENCRYPTION_KEY(),
       gitlabProjectId,
       req.protocol + '://' + req.get('host'),
       req.context.clientKey

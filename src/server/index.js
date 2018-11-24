@@ -16,6 +16,7 @@ import modelsSetup from './models';
 import { processQueue as processWebhookQueue } from './webhooks/queue';
 import { processQueue as processMigrationQueue } from './transition/migrationQueue';
 import { version } from '../../package.json';
+import { getMigrator, ensureCurrentMetaSchema } from './migrations';
 
 const reactIndexFile = fs.readFileSync(
   path.join(__dirname, '../../build/client', 'index.html')
@@ -27,7 +28,21 @@ const app = express();
 
 const addon = ac(app);
 
-const dbSetupPromise = modelsSetup(addon.schema);
+const dbSetupPromise = modelsSetup(addon.schema)
+  .then(() => getMigrator(addon.schema, addon))
+  .then((migrator) =>
+    ensureCurrentMetaSchema(migrator)
+      .then(() => migrator.pending())
+      .then((migrations) => {
+        if (migrations.length === 0) {
+          console.log(
+            'No migrations were executed, database schema was already up to date.'
+          );
+          return;
+        }
+        return migrator.up({});
+      })
+  );
 
 const port = addon.config.port();
 const devEnv = app.get('env') === 'development';
