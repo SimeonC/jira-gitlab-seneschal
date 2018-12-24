@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="2.2.1"></a>
+## [2.2.1](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.2.0...v2.2.1) (2018-12-24)
+
+
+### Bug Fixes
+
+* build wasn’t pulling in weird files ([8489940](https://github.com/SimeonC/jira-gitlab-seneschal/commit/8489940))
+
+
+
 <a name="2.2.0"></a>
 # [2.2.0](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.1.6...v2.2.0) (2018-12-24)
 
