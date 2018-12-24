@@ -6,12 +6,13 @@ import {
   registerProject,
   setWebhookClientKey
 } from '../apis/webhooks';
+import type { DatabaseType } from '../models';
 import { enqueueWebhook } from './queue';
 import gitlabApi from '../apis/gitlab';
 import type { GitlabCredential } from '../apis/credentials';
 import { getCredential } from '../apis/credentials';
 import { encrypt } from '../utils/encryption';
-import type { WebhookProjectStatusType } from '../apis/webhooks';
+import type { WebhookProjectStatusType } from '../apis/webhooks.types';
 
 const GITLAB_SECRET_TOKEN_PASSWORD = 'D+_"WqXsx_#]indVNBP?M3*7?/bnt&hB';
 

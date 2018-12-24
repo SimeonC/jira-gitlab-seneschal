@@ -26,7 +26,7 @@ import type {
   WebhookMetadataType,
   WebhookProjectStatusType,
   WebhookTransitionMapsType
-} from './apis/webhooks';
+} from './apis/webhooks.types';
 import projectMappingApi from './apis/projectMapping';
 import { createWebhooks } from './webhooks';
 import type { DatabaseType } from './models';

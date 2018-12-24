@@ -3,7 +3,7 @@ import uniq from 'lodash/uniq';
 import type { WebhookProcessResponseType } from './queue';
 import { jiraRequest } from '../apis/jira';
 import linkIssues from './linkIssues';
-import type { WebhookMetadataType } from '../apis/webhooks';
+import type { WebhookMetadataType } from '../apis/webhooks.types';
 
 function extractTickets(regex: string, search: string) {
   const tickets = [];

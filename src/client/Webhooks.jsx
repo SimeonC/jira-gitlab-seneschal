@@ -10,7 +10,7 @@ import DynamicTable from '@atlaskit/dynamic-table';
 import { Status } from '@atlaskit/status';
 import Button from '@atlaskit/button';
 import BaseSelect from '@atlaskit/select';
-import type { WebhookProjectStatusEnumType } from '../server/apis/webhooks';
+import type { WebhookProjectStatusEnumType } from '../server/apis/webhooks.types';
 
 import WebhookSettings from './WebhookSettings';
 

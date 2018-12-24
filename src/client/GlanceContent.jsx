@@ -7,7 +7,7 @@ import Avatar, { AvatarItem } from '@atlaskit/avatar';
 import PullRequestIcon from '@atlaskit/icon/glyph/bitbucket/pullrequests';
 import PullRequest24Icon from '@atlaskit/icon-object/glyph/pull-request/24';
 import ShortcutIcon from '@atlaskit/icon/glyph/shortcut';
-import { jiraIssueGlancePropertyKey } from '../server/webhooks/mergeRequest';
+import { jiraIssueGlancePropertyKey } from '../server/webhooks/constants';
 
 function getAppearance(status) {
   switch (status) {

@@ -5,7 +5,7 @@ import {
   getWebhookMetadata,
   updateProject,
   WEBHOOK_TYPES
-} from '../apis/webhooks';
+} from '../apis/webhooks.types';
 import processWebhookComment from './comments';
 import { jiraRequest } from '../apis/jira';
 import processWebhookMergeRequest from './mergeRequest';
