@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="2.2.0"></a>
+# [2.2.0](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.1.6...v2.2.0) (2018-12-24)
+
+
+### Bug Fixes
+
+* encrypt credentials when being stored in the db ([472f6bf](https://github.com/SimeonC/jira-gitlab-seneschal/commit/472f6bf)), closes [#3](https://github.com/SimeonC/jira-gitlab-seneschal/issues/3)
+* merge request hooks ([4b2dc08](https://github.com/SimeonC/jira-gitlab-seneschal/commit/4b2dc08)), closes [#15](https://github.com/SimeonC/jira-gitlab-seneschal/issues/15)
+* **webhooks:** support parsing of code blocks ([a835b51](https://github.com/SimeonC/jira-gitlab-seneschal/commit/a835b51)), closes [#18](https://github.com/SimeonC/jira-gitlab-seneschal/issues/18)
+
+
+### Features
+
+* upgrade Jira side MR display ([81c2e0d](https://github.com/SimeonC/jira-gitlab-seneschal/commit/81c2e0d)), closes [#17](https://github.com/SimeonC/jira-gitlab-seneschal/issues/17)
+
+
+
 <a name="2.1.6"></a>
 ## [2.1.6](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.1.5...v2.1.6) (2018-11-19)
 
