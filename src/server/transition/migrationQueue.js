@@ -123,14 +123,9 @@ export async function startProcessingProject(
     },
     queryOptions
   );
-  await setCredential(
-    database,
-    jiraAddon.config.CREDENTIAL_ENCRYPTION_KEY(),
-    `${JIRA_GITLAB_PROJECT_KEY}-${projectId}`,
-    {
-      token: clientKey
-    }
-  );
+  await setCredential(jiraAddon, `${JIRA_GITLAB_PROJECT_KEY}-${projectId}`, {
+    token: clientKey
+  });
   const issues = await database.MigrationIssues.findAll(queryOptions);
   await database.MigrationProjects.update(
     {
@@ -183,8 +178,7 @@ async function initJiraApi(
   gitlabProjectId: string
 ): { api: *, baseUrl: string } {
   const jiraCredentials: JiraCredential = (await getCredential(
-    addon.schema.models,
-    addon.config.CREDENTIAL_ENCRYPTION_KEY(),
+    addon,
     `${JIRA_GITLAB_PROJECT_KEY}-${gitlabProjectId}`
   ): any);
   // $FlowFixMe

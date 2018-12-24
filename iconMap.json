@@ -1,7 +1,0 @@
-{
-  "merged": "https://gitlab-senechal.atlassian.net/images/icons/statuses/closed.png",
-  "opened": "https://gitlab-senechal.atlassian.net/images/icons/statuses/resolved.png",
-  "closed": "https://gitlab-senechal.atlassian.net/images/icons/statuses/reopened.png",
-  "locked": "https://gitlab-senechal.atlassian.net/secure/viewavatar?avatarId=10323",
-  "wip": "https://gitlab-senechal.atlassian.net/images/icons/statuses/inprogress.png"
-}

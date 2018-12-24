@@ -25,8 +25,7 @@ import createVersionsFromMilestones, {
 import type {
   WebhookMetadataType,
   WebhookProjectStatusType,
-  WebhookTransitionMapsType,
-  WebhookTransitionsType
+  WebhookTransitionMapsType
 } from './apis/webhooks';
 import projectMappingApi from './apis/projectMapping';
 import { createWebhooks } from './webhooks';
@@ -55,7 +54,7 @@ process.on('SIGTERM', () => cleanExit('SIGTERM')); // catch kill
 
 async function testGitlabCredentials(database: DatabaseType, jiraAddon: *) {
   try {
-    const api = await gitlabApi(database, jiraAddon);
+    const api = await gitlabApi(jiraAddon);
     await api.Users.current();
     return true;
   } catch (err) {
@@ -158,7 +157,7 @@ export default function(addon: *) {
   }
 
   async function gitlabProjects() {
-    const api = await gitlabApi(addon.schema.models, addon);
+    const api = await gitlabApi(addon);
     const projects = await api.Projects.all({
       archived: false,
       simple: true
@@ -305,12 +304,7 @@ export default function(addon: *) {
     { appUrl, token }: { appUrl: string, token: string }
   ) {
     try {
-      await setCredential(
-        addon.schema.models,
-        addon.config.CREDENTIAL_ENCRYPTION_KEY(),
-        'gitlab',
-        { appUrl, token }
-      );
+      await setCredential(addon, 'gitlab', { appUrl, token });
       return {
         success: testGitlabCredentials(addon.schema.models)
       };
@@ -405,8 +399,7 @@ export default function(addon: *) {
     req: *
   ): WebhookProjectStatusType {
     return createWebhooks(
-      addon.schema.models,
-      addon.config.CREDENTIAL_ENCRYPTION_KEY(),
+      addon,
       gitlabProjectId,
       req.protocol + '://' + req.get('host'),
       req.context.clientKey

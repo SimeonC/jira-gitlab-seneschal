@@ -1,76 +1,115 @@
 {
-    "key": "gitlab-seneschal",
-    "name": "GitLab Seneschal",
-    "description": "Add on to help migrate from and maintain a GitLab/Jira setup",
-    "vendor": {
-        "name": "Simeon Cheeseman",
-        "url": "https://github.com/SimeonC/jira-gitlab-seneschal"
-    },
-    "baseUrl": "{{localBaseUrl}}",
-    "links": {
-        "self": "{{localBaseUrl}}/atlassian-connect.json",
-        "homepage": "{{localBaseUrl}}/atlassian-connect.json"
-    },
-    "authentication": {
-        "type": "jwt"
-    },
-    "apiVersion": 3,
-    "lifecycle": {
-        "installed": "/installed"
-    },
-    "scopes": [
-        "read",
-        "write",
-        "admin",
-        "project_admin"
-    ],
-    "modules": {
-        "configurePage": {
-            "key": "gitlab-seneschal-setup",
-            "location": "admin_plugins_menu/gitlab-seneschal",
-            "name": {
-                "value": "Setup"
-            },
-            "url": "/admin?route=setup",
-            "conditions": [{
-                "condition": "user_is_admin"
-            }]
+  "key": "gitlab-seneschal",
+  "name": "GitLab Seneschal",
+  "description": "Add on to help migrate from and maintain a GitLab/Jira setup",
+  "vendor": {
+    "name": "Simeon Cheeseman",
+    "url": "https://github.com/SimeonC/jira-gitlab-seneschal"
+  },
+  "baseUrl": "{{localBaseUrl}}",
+  "links": {
+    "self": "{{localBaseUrl}}/atlassian-connect.json",
+    "homepage": "{{localBaseUrl}}/atlassian-connect.json"
+  },
+  "authentication": {
+    "type": "jwt"
+  },
+  "apiVersion": 3,
+  "lifecycle": {
+    "installed": "/installed"
+  },
+  "scopes": [
+    "read",
+    "write",
+    "admin",
+    "project_admin"
+  ],
+  "modules": {
+    "jiraIssueGlances": [
+      {
+        "key": "gitlab-seneshal-merge-requests-glance",
+        "icon": {
+          "width": 32,
+          "height": 32,
+          "url": "/assets/gitlab-logo.svg"
         },
-        "webSections": [
-            {
-                "key": "gitlab-seneschal",
-                "location": "admin_plugins_menu",
-                "name": {
-                    "value": "Gitlab Seneschal"
-                }
-            }
-        ],
-        "adminPages": [
-            {
-                "key": "gitlab-seneschal-migrations",
-                "location": "admin_plugins_menu/gitlab-seneschal",
-                "name": {
-                    "value": "Migrations"
-                },
-                "url": "/admin?route=migrations",
-                "conditions": [{
-                    "condition": "user_is_admin"
-                }]
-            },
-            {
-                "key": "gitlab-seneschal-webhooks",
-                "location": "admin_plugins_menu/gitlab-seneschal",
-                "name": {
-                    "value": "Webhooks"
-                },
-                "url": "/admin?route=webhooks",
-                "conditions": [{
-                    "condition": "user_is_admin"
-                }]
-            }
-        ]
+        "content": {
+          "type": "label",
+          "label": {
+            "value": "Merge Requests"
+          }
+        },
+        "target": {
+          "type": "web_panel",
+          "url": "/gitlab-seneschal-merge-requests"
+        },
+        "name": {
+          "value": "GitLab Seneschal"
+        }
+      }
+    ],
+    "webPanels": [
+      {
+        "key": "gitlab-seneschal-merge-requests",
+        "location": "atl.jira.view.issue.right.context",
+        "name": {
+          "value": "GitLab Merge Requests"
+        },
+        "url": "/gitlab-seneschal-merge-requests"
+      }
+    ],
+    "configurePage": {
+      "key": "gitlab-seneschal-setup",
+      "location": "admin_plugins_menu/gitlab-seneschal",
+      "name": {
+        "value": "Setup"
+      },
+      "url": "/admin?route=setup",
+      "conditions": [
+        {
+          "condition": "user_is_admin"
+        }
+      ]
     },
-    "apiMigrations": {
-        "gdpr": true
-    }
+    "webSections": [
+      {
+        "key": "gitlab-seneschal",
+        "location": "admin_plugins_menu",
+        "name": {
+          "value": "Gitlab Seneschal"
+        }
+      }
+    ],
+    "adminPages": [
+      {
+        "key": "gitlab-seneschal-migrations",
+        "location": "admin_plugins_menu/gitlab-seneschal",
+        "name": {
+          "value": "Migrations"
+        },
+        "url": "/admin?route=migrations",
+        "conditions": [
+          {
+            "condition": "user_is_admin"
+          }
+        ]
+      },
+      {
+        "key": "gitlab-seneschal-webhooks",
+        "location": "admin_plugins_menu/gitlab-seneschal",
+        "name": {
+          "value": "Webhooks"
+        },
+        "url": "/admin?route=webhooks",
+        "conditions": [
+          {
+            "condition": "user_is_admin"
+          }
+        ]
+      }
+    ]
+  },
+  "apiMigrations": {
+    "gdpr": true
+  }
 }

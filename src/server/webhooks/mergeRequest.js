@@ -1,12 +1,9 @@
 // @flow
 import uniq from 'lodash/uniq';
-import startCase from 'lodash/startCase';
 import type { WebhookProcessResponseType } from './queue';
 import { jiraRequest } from '../apis/jira';
 import linkIssues from './linkIssues';
 import type { WebhookMetadataType } from '../apis/webhooks';
-import { WEBHOOK_ICON_MAP_WIP_KEY } from '../apis/webhooks';
-import iconMap from '../../../iconMap.json';
 
 function extractTickets(regex: string, search: string) {
   const tickets = [];
@@ -61,43 +58,48 @@ export function processCommits(
   }));
 }
 
-function buildRemoteLink({
-  relationship,
-  issueKey,
-  mergeRequestUrl,
-  projectNamespace,
-  id,
-  icon,
-  title,
-  state
-}) {
-  const result = {
-    globalId: `${issueKey}=${mergeRequestUrl}`,
-    application: {
-      type: 'gitlab',
-      name: 'GitLab'
-    },
-    relationship,
-    object: {
-      url: mergeRequestUrl,
-      title: `${projectNamespace}-${id}`,
-      summary: title,
-      icon: {
-        url16x16: 'https://gitlab.kkvesper.net/favicon.ico',
-        title: 'Merge Request'
+export const jiraIssueGlancePropertyKey =
+  'com.atlassian.jira.issue:gitlab-seneschal:gitlab-seneshal-merge-requests-glance:status';
+
+async function updateMergeRequestIssueProperty(jiraApi, issueKey, meta) {
+  try {
+    const gitlabProperty = await jiraRequest(
+      jiraApi,
+      'get',
+      `/issue/${issueKey}/properties/${jiraIssueGlancePropertyKey}`
+    );
+    let updatedProperty = {
+      type: 'badge',
+      value: {
+        label: 0
       },
-      status: {
-        resolved: state !== 'opened',
-        title: state,
-        icon: {
-          url16x16: icon,
-          title: startCase(state),
-          link: mergeRequestUrl
-        }
-      }
+      mergeRequests: []
+    };
+    if (gitlabProperty.value) {
+      updatedProperty = gitlabProperty.value;
     }
-  };
-  return result;
+    const existingMergeRequest = updatedProperty.mergeRequests.find(
+      (mr) => mr.key === meta.key
+    );
+    if (!existingMergeRequest) {
+      updatedProperty.mergeRequests.push(meta);
+      updatedProperty.value.label += 1;
+    } else {
+      updatedProperty.mergeRequests.splice(
+        updatedProperty.mergeRequests.indexOf(existingMergeRequest),
+        1,
+        meta
+      );
+    }
+    await jiraRequest(
+      jiraApi,
+      'put',
+      `/issue/${issueKey}/properties/${jiraIssueGlancePropertyKey}`,
+      updatedProperty
+    );
+  } catch (error) {
+    console.error('set property error', error);
+  }
 }
 
 const gitlabJiraLinksHeader = '<summary>All Jira Seneschal Links</summary>';
@@ -106,6 +108,7 @@ const gitlabJiraLinksHeaderRegexp = gitlabJiraLinksHeader.replace(
   '\\/'
 );
 
+// This should be replaced once https://gitlab.com/gitlab-org/gitlab-ce/issues/48508 is done
 /*
 <details>
   <summary>All Jira Seneschal Links</summary>
@@ -249,18 +252,44 @@ export default async function processWebhookMergeRequest(
     description
   );
 
-  const baseRemoteLink = {
+  const baseIssuePropertyMeta = {
     mergeRequestUrl,
     projectNamespace: response.projectNamespace,
     id,
-    title: `[${
-      isWip ? WEBHOOK_ICON_MAP_WIP_KEY.toUpperCase() : startCase(state)
-    }] ${title}`,
-    state,
-    icon: iconMap[isWip ? WEBHOOK_ICON_MAP_WIP_KEY : state]
+    title,
+    status: isWip ? 'in progress' : state,
+    approvers: []
   };
-  // states are: merged opened closed locked
 
+  if (action === 'merge') {
+    const approvals = await gitlabApi.MergeRequests.approvals(
+      response.projectId,
+      { mergeRequestId: response.mergeRequestId }
+    );
+    if (approvals && approvals.approved_by) {
+      approvals.approved_by.forEach(async (user) => {
+        let approvalUser = { name: user.name };
+        const gitlabUser = await gitlabApi.Users.search(user.username);
+        if (gitlabUser.email) {
+          const foundUser = await jiraRequest(
+            jiraApi,
+            'get',
+            `/user/search?query=${gitlabUser.email}`
+          );
+          approvalUser = foundUser;
+        } else {
+          approvalUser = {
+            key: gitlabUser.id,
+            name: gitlabUser.name,
+            avatar: gitlabUser.avatar_url
+          };
+        }
+        baseIssuePropertyMeta.approvers.push(approvalUser);
+      });
+    }
+  }
+
+  // states are: merged opened closed locked
   const textIssues = uniq(mrIssues.concat(response.issues)).filter(
     (issueKey) =>
       !commitIssues.find(
@@ -299,34 +328,22 @@ export default async function processWebhookMergeRequest(
 
   textIssues.forEach(async (issueKey: string) => {
     try {
-      await jiraRequest(
-        jiraApi,
-        'post',
-        `/issue/${issueKey}/remotelink`,
-        buildRemoteLink({
-          ...baseRemoteLink,
-          relationship: 'Referenced from GitLab Merge Request',
-          issueKey
-        })
-      );
+      await updateMergeRequestIssueProperty(jiraApi, issueKey, {
+        ...baseIssuePropertyMeta,
+        key: response.mergeRequestId,
+        relationship: 'reference'
+      });
     } catch (error) {
-      console.error('remote link error', error);
+      console.error('set property error', error);
     }
   });
   commitIssues.forEach(async ({ issueKey, shouldTransition }) => {
     try {
-      await jiraRequest(
-        jiraApi,
-        'post',
-        `/issue/${issueKey}/remotelink`,
-        buildRemoteLink({
-          ...baseRemoteLink,
-          relationship: shouldTransition
-            ? 'Completed from GitLab Merge Request'
-            : 'Referenced from GitLab Merge Request',
-          issueKey
-        })
-      );
+      await updateMergeRequestIssueProperty(jiraApi, issueKey, {
+        ...baseIssuePropertyMeta,
+        key: response.mergeRequestId,
+        relationship: shouldTransition ? 'transitions' : 'reference'
+      });
     } catch (error) {
       console.error('remote link error', error);
     }

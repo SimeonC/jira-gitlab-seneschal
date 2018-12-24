@@ -32,7 +32,7 @@ export default async function createJiraIssue(
     gitlabProjectId
   );
   const database: DatabaseType = jiraAddon.schema.models;
-  const gitlabApi = await GitlabApi(database, jiraAddon);
+  const gitlabApi = await GitlabApi(jiraAddon);
 
   const mappingQueryOptions = {
     where: {

@@ -127,7 +127,8 @@ async function loadGitlabProjectIssues(projectId: string) {
     totalCount: 1,
     currentMessage: 'Loading'
   });
-  const gitlabApi = await GitlabApi(database, {
+  const gitlabApi = await GitlabApi({
+    schema: database,
     config: {
       CREDENTIAL_ENCRYPTION_KEY: () => process.env.CREDENTIAL_ENCRYPTION_KEY
     }

@@ -15,8 +15,6 @@ export function isValidWebhookType(type: WebhookType | string): boolean {
 
 export type WebhookType = $Values<typeof WEBHOOK_TYPES>;
 
-export const WEBHOOK_ICON_MAP_WIP_KEY = 'wip';
-
 export type WebhookCredentialType = {
   secretKey: string,
   clientKey: string
@@ -124,7 +122,7 @@ export async function upsertProject(
 export async function updateProject(
   database: DatabaseType,
   projectId: string,
-  props: { name: string, url: string, status: WebhookProjectStatusEnumType }
+  props: { name?: string, url?: string, status?: WebhookProjectStatusEnumType }
 ): boolean {
   await database.WebhookStatuses.update(props, {
     where: {

@@ -16,18 +16,17 @@ import type { WebhookProjectStatusType } from '../apis/webhooks';
 const GITLAB_SECRET_TOKEN_PASSWORD = 'D+_"WqXsx_#]indVNBP?M3*7?/bnt&hB';
 
 export async function createWebhooks(
-  database: DatabaseType,
-  encryptionKey: string,
+  jiraApp: *,
   gitlabProjectId: string,
   selfBaseUrl: string,
   clientKey: string
 ): WebhookProjectStatusType {
+  const database: DatabaseType = jiraApp.schema.models;
   const { appUrl }: GitlabCredential = (await getCredential(
-    database,
-    encryptionKey,
+    jiraApp,
     'gitlab'
   ): any);
-  const gitlab = await gitlabApi(database, encryptionKey);
+  const gitlab = await gitlabApi(jiraApp);
   const currentProjectWebhooks = await gitlab.ProjectHooks.all(gitlabProjectId);
 
   const key = `${kebabCase(

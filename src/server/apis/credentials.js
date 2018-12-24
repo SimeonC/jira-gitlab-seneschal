@@ -37,37 +37,32 @@ export function decryptKeys(
 }
 
 export async function setCredential(
-  database: DatabaseType,
-  encryptionKey: string,
+  jiraApp: *,
   key: 'gitlab' | string,
   credential: GitlabCredential | JiraCredential
 ) {
-  await database.Credentials.upsert({
+  await jiraApp.schema.models.Credentials.upsert({
     key,
-    ...encryptKeys(encryptionKey, credential)
+    ...encryptKeys(jiraApp.config.CREDENTIAL_ENCRYPTION_KEY(), credential)
   });
 }
 
 export async function getCredential(
-  database: DatabaseType,
-  encryptionKey: string,
+  jiraApp: *,
   key: 'gitlab' | string
 ): ?GitlabCredential | ?JiraCredential {
   // $FlowFixMe
-  const credential = await database.Credentials.findOne({
+  const credential = await jiraApp.schema.models.Credentials.findOne({
     where: {
       key
     }
   });
   // $FlowFixMe
-  return decryptKeys(encryptionKey, credential);
+  return decryptKeys(jiraApp.config.CREDENTIAL_ENCRYPTION_KEY(), credential);
 }
 
-export async function clearCredential(
-  database: DatabaseType,
-  key: 'gitlab' | string
-) {
-  return await database.Credentials.destroy({
+export async function clearCredential(jiraApp: *, key: 'gitlab' | string) {
+  return await jiraApp.schema.models.Credentials.destroy({
     where: {
       key
     }

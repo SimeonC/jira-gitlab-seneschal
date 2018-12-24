@@ -18,8 +18,11 @@ import { processQueue as processMigrationQueue } from './transition/migrationQue
 import { version } from '../../package.json';
 import { getMigrator, ensureCurrentMetaSchema } from './migrations';
 
-const reactIndexFile = fs.readFileSync(
-  path.join(__dirname, '../../build/client', 'index.html')
+const reactAdminFile = fs.readFileSync(
+  path.join(__dirname, '../../build/client', 'admin.html')
+);
+const reactMrGlanceFile = fs.readFileSync(
+  path.join(__dirname, '../../build/client', 'mrGlance.html')
 );
 
 // Password Must be 256 bytes (32 characters)
@@ -63,7 +66,7 @@ app.use(compression());
 // You need to instantiate the `atlassian-connect-express` middleware in order to get its goodness for free
 app.use(addon.middleware());
 
-function sendFrontendAdminPage(req, res, htmlFileContent) {
+function sendFrontendPage(req, res, htmlFileContent) {
   let htmlContent = htmlFileContent;
   htmlContent = htmlContent.replace(
     /<\/head>/gi,
@@ -72,10 +75,11 @@ function sendFrontendAdminPage(req, res, htmlFileContent) {
     }"><meta name="route" content="${req.query.route}"></head>`
   );
   htmlContent = htmlContent.replace(
-    /<\/body>/gi,
-    `<script src="${
+    // this is unconventional but this must be loaded before `window.AP...` can be used
+    /<body>/gi,
+    `<body><script src="${
       req.context.hostBaseUrl
-    }/atlassian-connect/all.js"></script></body>`
+    }/atlassian-connect/all.js"></script>`
   );
   res.set('Content-Type', 'text/html');
   res.send(htmlContent);
@@ -97,26 +101,46 @@ if (devEnv) {
   const devMiddleware = middleware(compiler, {
     publicPath: '/admin'
   });
-  function serveFrontendRequest(req, res) {
+
+  app.get('/admin', addon.authenticate(), (req, res) => {
     const htmlFile = devMiddleware.fileSystem.readFileSync(
-      config.output.path + '/index.html'
+      config.output.path + '/admin.html'
     );
-    sendFrontendAdminPage(req, res, htmlFile.toString());
-  }
-  app.get('/admin', addon.authenticate(), serveFrontendRequest);
+    sendFrontendPage(req, res, htmlFile.toString());
+  });
+  app.get(
+    '/gitlab-seneschal-merge-requests',
+    addon.authenticate(),
+    (req, res) => {
+      const htmlFile = devMiddleware.fileSystem.readFileSync(
+        config.output.path + '/mrGlance.html'
+      );
+      sendFrontendPage(req, res, htmlFile.toString());
+    }
+  );
+
+  app.use(express.static(path.join(__dirname, '../../public')));
   app.use(devMiddleware);
   app.use(hotware(compiler));
 } else {
   // Enable static resource fingerprinting for far future expires caching in production
   app.use(express.static(path.join(__dirname, '../../build/client')));
 
-  const htmlContent = reactIndexFile.toString();
+  const adminContent = reactAdminFile.toString();
+  const mrGlanceContent = reactMrGlanceFile.toString();
 
-  function serveFrontendRequest(req, res) {
-    sendFrontendAdminPage(req, res, htmlContent);
+  function serveFrontendRequest(content) {
+    return (req, res) => {
+      sendFrontendPage(req, res, content);
+    };
   }
 
-  app.get('/admin', addon.authenticate(), serveFrontendRequest);
+  app.get('/admin', addon.authenticate(), serveFrontendRequest(adminContent));
+  app.get(
+    '/gitlab-seneschal-merge-requests',
+    addon.authenticate(),
+    serveFrontendRequest(mrGlanceContent)
+  );
 }
 
 // Show nicer errors when in dev mode
