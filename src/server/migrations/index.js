@@ -17,7 +17,11 @@ export function getMigrator(sequelize, jiraAddon) {
       logging: helpers.view.log,
       migrations: {
         params: [sequelize.getQueryInterface(), jiraAddon],
-        path: path.resolve('./src/server/migrations'),
+        path: path.resolve(
+          `./${
+            process.env.NODE_ENV === 'production' ? 'build' : 'src'
+          }/server/migrations`
+        ),
         pattern: /^((?!^index\.).)*\.js/,
         wrap: (fun) => {
           if (fun.length === 3) {
