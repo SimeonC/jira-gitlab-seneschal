@@ -1,4 +1,4 @@
-export default function linkIssues(
+function parseTextBlock(
   jiraProjectKeys: string[],
   baseUrl: string,
   text: string
@@ -41,4 +41,46 @@ export default function linkIssues(
     issues,
     newText: transformedIssues.length ? newText : null
   };
+}
+
+export default function linkIssues(
+  jiraProjectKeys: string[],
+  baseUrl: string,
+  text: string
+): { issues: string[], newText: ?string } {
+  const splitRegex = /\\`|```|`|\\[^`]|[^`\\]+/gi;
+  if (!/`/gi.test(text)) {
+    return parseTextBlock(jiraProjectKeys, baseUrl, text);
+  }
+  let match = splitRegex.exec(text);
+  const result = {
+    newText: '',
+    issues: []
+  };
+  let isCode = false;
+  let isCodeBlock = false;
+  while (match) {
+    if (isCode) {
+      if (
+        (isCodeBlock && match[0] === '```') ||
+        (!isCodeBlock && match[0] === '`')
+      ) {
+        isCode = false;
+      }
+      result.newText += match[0];
+    } else if (match[0] === '```' || match[0] === '`') {
+      isCode = true;
+      isCodeBlock = match[0] === '```';
+      result.newText += match[0];
+    } else if (match[0] === '\\') {
+      result.newText += match[0];
+    } else {
+      const blockResult = parseTextBlock(jiraProjectKeys, baseUrl, match[0]);
+      result.issues = result.issues.concat(blockResult.issues);
+      result.newText =
+        (result.newText || '') + (blockResult.newText || match[0]);
+    }
+    match = splitRegex.exec(text);
+  }
+  return result;
 }
