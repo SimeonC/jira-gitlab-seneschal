@@ -3,9 +3,9 @@ import gitlabApi from '../apis/gitlab';
 import {
   getWebhookClientKey,
   getWebhookMetadata,
-  updateProject,
-  WEBHOOK_TYPES
-} from '../apis/webhooks.types';
+  updateProject
+} from '../apis/webhooks';
+import { WEBHOOK_TYPES } from '../apis/webhooks.types';
 import processWebhookComment from './comments';
 import { jiraRequest } from '../apis/jira';
 import processWebhookMergeRequest from './mergeRequest';
