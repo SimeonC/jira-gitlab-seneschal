@@ -8,6 +8,8 @@ import { jiraRequest } from './apis/jira';
 import { setCredential } from './apis/credentials';
 import {
   allProjects,
+  getWebhookErrors,
+  retryWebhookFailure,
   getWebhookMetadata as coreGetWebhookMetadata
 } from './apis/webhooks';
 import type { TransitionMappingVersionType } from './transition/types';
@@ -23,6 +25,7 @@ import createVersionsFromMilestones, {
   createVersionFromMilestone
 } from './transition/createVersions';
 import type {
+  WebhookErrorType,
   WebhookMetadataType,
   WebhookProjectStatusType,
   WebhookTransitionMapsType
@@ -366,7 +369,7 @@ export default function(addon: *) {
       mergeStatusIds = []
     }: WebhookTransitionMapsType,
     req: *
-  ): WebhookMetadataType {
+  ): SuccessResponseType {
     await addon.schema.models.WebhookTransitionMaps.upsert({
       clientKey: req.context.clientKey,
       jiraProjectKey,
@@ -381,7 +384,7 @@ export default function(addon: *) {
     root: *,
     { jiraProjectKey }: { jiraProjectKey: string },
     req: *
-  ): WebhookMetadataType {
+  ): SuccessResponseType {
     const deletedCount = await addon.schema.models.WebhookTransitionMaps.destroy(
       {
         where: {
@@ -410,6 +413,38 @@ export default function(addon: *) {
     return await allProjects(addon.schema.models);
   }
 
+  async function webhookErrors(
+    root: *,
+    variables: { pageOffset?: number, pageSize?: number }
+  ): WebhookErrorType[] {
+    const { pageOffset, pageSize = 20 } = variables;
+    const { count, rows } = await getWebhookErrors(
+      addon.schema.models,
+      pageSize,
+      pageOffset
+    );
+    console.log('[debug]', { variables, count });
+    return {
+      page: pageOffset + 1,
+      totalPages: Math.ceil(count / pageSize),
+      rows: rows.map(({ id, original, error, createdAt }) => ({
+        id,
+        original: JSON.stringify(original),
+        error: JSON.stringify(error),
+        createdAt
+      }))
+    };
+  }
+
+  async function retryWebhook(
+    root: *,
+    { id }: { id: string }
+  ): SuccessResponseType {
+    return {
+      success: await retryWebhookFailure(addon, id)
+    };
+  }
+
   // bind all these functions to pass in the addon/jira api
   return projectMappingApi(addon, {
     Queries: {
@@ -431,7 +466,8 @@ export default function(addon: *) {
       jiraComponents,
       jiraStatuses,
       getWebhookMetadata,
-      webhooks
+      webhooks,
+      webhookErrors
     },
     Mutations: {
       setGitlabCredentials,
@@ -444,7 +480,8 @@ export default function(addon: *) {
       createJiraVersionFromMilestone,
       clearMigrationProject,
       migrateMilestones,
-      retryAllFailures
+      retryAllFailures,
+      retryWebhook
     }
   });
 }

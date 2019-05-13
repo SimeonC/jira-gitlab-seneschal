@@ -69,6 +69,7 @@ type Queries {
   jiraPriorities: [JiraPriority!]!
   getWebhookMetadata: WebhookMetadata
   webhooks: [WebhookStatus!]!
+  webhookErrors(pageSize: Int, pageOffset: Int): PaginatedWebhookErrors
 }
 
 type Mutations {
@@ -113,6 +114,7 @@ type Mutations {
     gitlabProjectId: String!
   ): [MappingVersion!]
   retryAllFailures: SuccessResponse
+  retryWebhook(id: String!): SuccessResponse
 }
 
 schema {

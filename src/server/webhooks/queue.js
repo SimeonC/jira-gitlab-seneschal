@@ -89,7 +89,12 @@ async function processElement(
       break;
   }
   if (processMetadata) {
+    const { web_url, name_with_namespace } = gitlabApiInstance.Projects.show(
+      queueElement.body.project.id
+    );
     await updateProject(jiraAddon.schema.models, processMetadata.projectId, {
+      name: name_with_namespace,
+      url: web_url,
       status: 'healthy'
     });
   }

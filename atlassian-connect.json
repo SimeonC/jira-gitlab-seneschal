@@ -106,6 +106,19 @@
             "condition": "user_is_admin"
           }
         ]
+      },
+      {
+        "key": "gitlab-seneschal-webhook-errors",
+        "location": "admin_plugins_menu/gitlab-seneschal",
+        "name": {
+          "value": "Webhook Errors"
+        },
+        "url": "/admin?route=webhook-errors",
+        "conditions": [
+          {
+            "condition": "user_is_admin"
+          }
+        ]
       }
     ]
   },

@@ -8,6 +8,7 @@ import { HashRouter, Route, Switch, Redirect } from 'react-router-dom';
 import Authenticate from './Authenticate';
 import Migrations from './Migrations';
 import Webhooks from './Webhooks';
+import WebhookErrors from './WebhookErrors';
 import ProcessingProject from './ProcessingProject';
 import GitlabTokenForm from './GitlabTokenForm';
 
@@ -40,6 +41,7 @@ export default class App extends Component {
                   component={ProcessingProject}
                 />
                 <Route path="/webhooks" component={Webhooks} />
+                <Route path="/webhook-errors" component={WebhookErrors} />
                 <Route path="/migrations" component={Migrations} />
                 <Route path="/setup" component={GitlabTokenForm} />
                 <Route render={() => <Redirect to={defaultRoute} />} />

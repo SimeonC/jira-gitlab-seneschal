@@ -23,6 +23,19 @@ type WebhookStatus {
   status: String!
 }
 
+type WebhookError {
+  id: String!
+  original: String!
+  error: String!
+  createdAt: String!
+}
+
+type PaginatedWebhookErrors {
+  page: Int!
+  totalPages: Int!
+  rows: [WebhookError!]!
+}
+
 input WebhookTransitionMapInput {
   jiraProjectKey: String!
   openStatusIds: [String!]!

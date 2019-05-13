@@ -1,9 +1,9 @@
 // @flow
 import type { DatabaseType } from '../models';
+import { enqueueWebhook } from '../webhooks/queue';
 import type {
   WebhookType,
   WebhookCredentialType,
-  WebhookTransitionMapsType,
   WebhookProjectStatusType,
   WebhookProjectStatusEnumType,
   WebhookMetadataType
@@ -94,7 +94,7 @@ export async function upsertProject(
 export async function updateProject(
   database: DatabaseType,
   projectId: string,
-  props: { name?: string, url?: string, status?: WebhookProjectStatusEnumType }
+  props: { name: string, url: string, status: WebhookProjectStatusEnumType }
 ): boolean {
   await database.WebhookStatuses.update(props, {
     where: {
@@ -156,4 +156,40 @@ export async function setWebhookClientKey(
     secretKey,
     clientKey
   });
+}
+
+export async function getWebhookErrors(
+  database: DatabaseType,
+  pageSize: number = 20,
+  pageOffset: number = 0
+) {
+  return {
+    rows: await database.WebhookFailures.findAll({
+      limit: pageSize,
+      offset: pageOffset * pageSize,
+      order: [['createdAt', 'DESC']]
+    }),
+    count: await database.WebhookFailures.count()
+  };
+}
+
+export async function retryWebhookFailure(
+  jiraAddon: *,
+  id: string
+): Promise<boolean> {
+  const failure = await jiraAddon.schema.models.WebhookFailures.findOne({
+    where: {
+      id
+    }
+  });
+  if (!failure) return false;
+  await enqueueWebhook(jiraAddon, failure.original);
+  return (
+    1 ===
+    (await jiraAddon.schema.models.WebhookFailures.destroy({
+      where: {
+        id
+      }
+    }))
+  );
 }
