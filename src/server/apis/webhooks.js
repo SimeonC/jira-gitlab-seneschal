@@ -190,3 +190,26 @@ export async function retryWebhookFailure(
     }))
   );
 }
+
+export async function deleteWebhookFailure(
+  database: DatabaseType,
+  id: string
+): Promise<boolean> {
+  return (
+    1 ===
+    (await database.WebhookFailures.destroy({
+      where: {
+        id
+      }
+    }))
+  );
+}
+
+export async function deleteAllWebhookFailures(
+  database: DatabaseType
+): Promise<boolean> {
+  await database.WebhookFailures.destroy({
+    truncate: true
+  });
+  return true;
+}

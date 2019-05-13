@@ -10,7 +10,9 @@ import {
   allProjects,
   getWebhookErrors,
   retryWebhookFailure,
-  getWebhookMetadata as coreGetWebhookMetadata
+  getWebhookMetadata as coreGetWebhookMetadata,
+  deleteWebhookFailure as internalDeleteWebhookFailure,
+  deleteAllWebhookFailures as internaldeleteAllWebhookFailures
 } from './apis/webhooks';
 import type { TransitionMappingVersionType } from './transition/types';
 import {
@@ -423,7 +425,6 @@ export default function(addon: *) {
       pageSize,
       pageOffset
     );
-    console.log('[debug]', { variables, count });
     return {
       page: pageOffset + 1,
       totalPages: Math.ceil(count / pageSize),
@@ -442,6 +443,21 @@ export default function(addon: *) {
   ): SuccessResponseType {
     return {
       success: await retryWebhookFailure(addon, id)
+    };
+  }
+
+  async function deleteWebhookFailure(
+    root: *,
+    { id }: { id: string }
+  ): SuccessResponseType {
+    return {
+      success: await internalDeleteWebhookFailure(addon.schema.models, id)
+    };
+  }
+
+  async function deleteAllWebhookFailures(): SuccessResponseType {
+    return {
+      success: await internaldeleteAllWebhookFailures(addon.schema.models)
     };
   }
 
@@ -481,7 +497,9 @@ export default function(addon: *) {
       clearMigrationProject,
       migrateMilestones,
       retryAllFailures,
-      retryWebhook
+      retryWebhook,
+      deleteWebhookFailure,
+      deleteAllWebhookFailures
     }
   });
 }

@@ -17,6 +17,7 @@ const schemas = [
   transitionProjectSchema,
   webhooksSchema
 ];
+
 const modelSchemaFileNames = fs
   .readdirSync(path.join(__dirname, './models'))
   .reduce((result, fileName) => {

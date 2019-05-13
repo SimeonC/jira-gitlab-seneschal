@@ -7,7 +7,7 @@ import moment from 'moment';
 import ReactJson from 'react-json-view';
 import Page, { Grid, GridColumn } from '@atlaskit/page';
 import DynamicTable from '@atlaskit/dynamic-table';
-import Button from '@atlaskit/button';
+import Button, { ButtonGroup } from '@atlaskit/button';
 import Pagination from '@atlaskit/pagination';
 
 const failureQuery = gql`
@@ -28,6 +28,22 @@ const failureQuery = gql`
 const retryQuery = gql`
   mutation RetryFailure($id: String!) {
     retryWebhook(id: $id) {
+      success
+    }
+  }
+`;
+
+const deleteQuery = gql`
+  mutation DeleteFailure($id: String!) {
+    deleteWebhookFailure(id: $id) {
+      success
+    }
+  }
+`;
+
+const deleteAllQuery = gql`
+  mutation ClearLogs {
+    deleteAllWebhookFailures {
       success
     }
   }
@@ -98,9 +114,17 @@ class WebhookErrors extends Component<
                   )
                 },
                 {
-                  key: 'retry',
+                  key: 'actions',
                   content: (
-                    <Button onClick={() => this.retryError(id)}>Retry</Button>
+                    <ButtonGroup>
+                      <Button onClick={() => this.retryError(id)}>Retry</Button>
+                      <Button
+                        onClick={() => this.deleteError(id)}
+                        appearance="danger"
+                      >
+                        Delete
+                      </Button>
+                    </ButtonGroup>
                   )
                 }
               ]
@@ -129,11 +153,55 @@ class WebhookErrors extends Component<
       });
   };
 
+  deleteError = (id: string) => {
+    this.setState({ isLoading: true });
+    this.props.client
+      .mutate({
+        mutation: deleteQuery,
+        variables: { id }
+      })
+      .then(({ data }) => {
+        if (!data.deleteWebhookFailure.success) {
+          console.error(data);
+          this.setState({
+            isLoading: false
+          });
+        } else {
+          this.loadPage(this.state.page);
+        }
+      });
+  };
+
+  deleteAllErrors = () => {
+    // eslint-disable-next-line
+    if (!confirm('Are you sure you want to clear all errors?')) return;
+    this.setState({ isLoading: true });
+    this.props.client
+      .mutate({
+        mutation: deleteAllQuery
+      })
+      .then(({ data }) => {
+        if (!data.deleteAllWebhookFailures.success) {
+          console.error(data);
+          this.setState({
+            isLoading: false
+          });
+        } else {
+          this.loadPage(1);
+        }
+      });
+  };
+
   render() {
     const { rows, isLoading, page, pages } = this.state;
     return (
       <Page>
         <GridColumn>
+          <Grid>
+            <Button appearance="danger" onClick={this.deleteAllErrors}>
+              Clear all Error Logs
+            </Button>
+          </Grid>
           <Grid>
             <DynamicTable
               isFixedSize
@@ -159,7 +227,7 @@ class WebhookErrors extends Component<
                     isSortable: false
                   },
                   {
-                    key: 'retry',
+                    key: 'actions',
                     content: '',
                     isSortable: false
                   }

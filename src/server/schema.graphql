@@ -115,6 +115,8 @@ type Mutations {
   ): [MappingVersion!]
   retryAllFailures: SuccessResponse
   retryWebhook(id: String!): SuccessResponse
+  deleteWebhookFailure(id: String!): SuccessResponse
+  deleteAllWebhookFailures: SuccessResponse
 }
 
 schema {
