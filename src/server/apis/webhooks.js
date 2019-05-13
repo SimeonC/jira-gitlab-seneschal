@@ -163,14 +163,11 @@ export async function getWebhookErrors(
   pageSize: number = 20,
   pageOffset: number = 0
 ) {
-  return {
-    rows: await database.WebhookFailures.findAll({
-      limit: pageSize,
-      offset: pageOffset * pageSize,
-      order: [['createdAt', 'DESC']]
-    }),
-    count: await database.WebhookFailures.count()
-  };
+  return await database.WebhookFailures.findAndCountAll({
+    limit: pageSize,
+    offset: pageOffset * pageSize,
+    order: [['createdAt', 'DESC']]
+  });
 }
 
 export async function retryWebhookFailure(

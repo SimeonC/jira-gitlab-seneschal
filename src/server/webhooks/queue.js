@@ -89,9 +89,10 @@ async function processElement(
       break;
   }
   if (processMetadata) {
-    const { web_url, name_with_namespace } = gitlabApiInstance.Projects.show(
-      queueElement.body.project.id
-    );
+    const {
+      web_url,
+      name_with_namespace
+    } = await gitlabApiInstance.Projects.show(queueElement.body.project.id);
     await updateProject(jiraAddon.schema.models, processMetadata.projectId, {
       name: name_with_namespace,
       url: web_url,
@@ -128,7 +129,9 @@ export async function processQueue(jiraAddon: *) {
         const {
           web_url,
           name_with_namespace
-        } = gitlabApiInstance.Projects.show(nextQueueItem.body.project.id);
+        } = await gitlabApiInstance.Projects.show(
+          nextQueueItem.body.project.id
+        );
         await updateProject(database, nextQueueItem.body.project.id, {
           name: name_with_namespace,
           url: web_url,

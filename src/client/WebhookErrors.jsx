@@ -79,11 +79,23 @@ class WebhookErrors extends Component<
                 },
                 {
                   key: 'error',
-                  content: <ReactJson src={JSON.parse(error)} />
+                  content: (
+                    <ReactJson
+                      collapsed={1}
+                      enableClipboard={false}
+                      src={JSON.parse(error)}
+                    />
+                  )
                 },
                 {
                   key: 'original',
-                  content: <ReactJson src={JSON.parse(original)} />
+                  content: (
+                    <ReactJson
+                      collapsed={1}
+                      enableClipboard={false}
+                      src={JSON.parse(original)}
+                    />
+                  )
                 },
                 {
                   key: 'retry',
@@ -106,10 +118,14 @@ class WebhookErrors extends Component<
         variables: { id }
       })
       .then(({ data }) => {
-        if (!data.success) {
+        if (!data.retryWebhook.success) {
           console.error(data);
+          this.setState({
+            isLoading: false
+          });
+        } else {
+          this.loadPage(this.state.page);
         }
-        this.loadPage(this.state.page);
       });
   };
 
