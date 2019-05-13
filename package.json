@@ -1,6 +1,6 @@
 {
   "name": "jira-gitlab-seneschal",
-  "version": "2.2.5",
+  "version": "2.3.0",
   "private": true,
   "scripts": {
     "start": "node build/server/index.js",

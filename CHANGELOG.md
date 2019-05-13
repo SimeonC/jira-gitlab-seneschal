@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="2.3.0"></a>
+# [2.3.0](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.2.5...v2.3.0) (2019-05-13)
+
+
+### Bug Fixes
+
+* clean webhook errors output, await project ([f34d7f6](https://github.com/SimeonC/jira-gitlab-seneschal/commit/f34d7f6))
+* vulnerabilities ([b7c78db](https://github.com/SimeonC/jira-gitlab-seneschal/commit/b7c78db))
+
+
+### Features
+
+* **WebhookFailures:** support clearing ([abca7f8](https://github.com/SimeonC/jira-gitlab-seneschal/commit/abca7f8))
+
+
+
 <a name="2.2.5"></a>
 ## [2.2.5](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.2.4...v2.2.5) (2019-05-13)
 
