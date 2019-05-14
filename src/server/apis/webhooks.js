@@ -151,7 +151,7 @@ export async function setWebhookClientKey(
   secretKey: string,
   clientKey: string
 ) {
-  await database.WebhookClients.create({
+  await database.WebhookClients.upsert({
     key,
     secretKey,
     clientKey
@@ -180,6 +180,15 @@ export async function retryWebhookFailure(
     }
   });
   if (!failure) return false;
+  const credential: WebhookCredentialType = await jiraAddon.schema.models.WebhookClients.findOne(
+    {
+      where: {
+        key: failure.original.key
+      }
+    }
+  );
+  // Force update the secret key to catch if the original secret key was wrong
+  failure.original.secretKey = credential.secretKey;
   await enqueueWebhook(jiraAddon, failure.original);
   return (
     1 ===

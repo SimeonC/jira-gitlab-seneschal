@@ -428,12 +428,15 @@ export default function(addon: *) {
     return {
       page: pageOffset + 1,
       totalPages: Math.ceil(count / pageSize),
-      rows: rows.map(({ id, original, error, createdAt }) => ({
-        id,
-        original: JSON.stringify(original),
-        error: JSON.stringify(error),
-        createdAt
-      }))
+      rows: rows.map(({ id, original, error, createdAt }) => {
+        original.secretKey = 'OMITTED';
+        return {
+          id,
+          original: JSON.stringify(original),
+          error: JSON.stringify(error),
+          createdAt
+        };
+      })
     };
   }
 

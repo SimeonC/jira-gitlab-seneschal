@@ -214,7 +214,8 @@ class WebhookErrors extends Component<
                   {
                     key: 'createdAt',
                     content: 'Created At',
-                    isSortable: false
+                    isSortable: false,
+                    width: '120px'
                   },
                   {
                     key: 'error',
@@ -229,7 +230,8 @@ class WebhookErrors extends Component<
                   {
                     key: 'actions',
                     content: '',
-                    isSortable: false
+                    isSortable: false,
+                    width: '140px'
                   }
                 ]
               }}
