@@ -197,12 +197,12 @@ class WebhookErrors extends Component<
     return (
       <Page>
         <GridColumn>
-          <Grid>
+          <div>
             <Button appearance="danger" onClick={this.deleteAllErrors}>
               Clear all Error Logs
             </Button>
-          </Grid>
-          <Grid>
+          </div>
+          <div>
             <DynamicTable
               isFixedSize
               isLoading={isLoading}
@@ -237,10 +237,10 @@ class WebhookErrors extends Component<
               }}
               rows={rows}
             />
-          </Grid>
-          <Grid>
+          </div>
+          <div>
             <Pagination onChange={this.loadPage} value={page} total={pages} />
-          </Grid>
+          </div>
         </GridColumn>
       </Page>
     );
