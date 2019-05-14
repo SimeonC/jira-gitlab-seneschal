@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="2.3.2"></a>
+## [2.3.2](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.3.1...v2.3.2) (2019-05-14)
+
+
+### Bug Fixes
+
+* **client/WebhookErrors:** make table full width ([9ff7a09](https://github.com/SimeonC/jira-gitlab-seneschal/commit/9ff7a09))
+
+
+
 <a name="2.3.1"></a>
 ## [2.3.1](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.3.0...v2.3.1) (2019-05-14)
 
