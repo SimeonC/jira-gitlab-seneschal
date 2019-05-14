@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="2.3.1"></a>
+## [2.3.1](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.3.0...v2.3.1) (2019-05-14)
+
+
+### Bug Fixes
+
+* **WebhookErrors:** sanitize secretKey from error logs ([52247a7](https://github.com/SimeonC/jira-gitlab-seneschal/commit/52247a7))
+
+
+
 <a name="2.3.0"></a>
 # [2.3.0](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.2.5...v2.3.0) (2019-05-13)
 
