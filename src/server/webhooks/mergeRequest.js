@@ -188,7 +188,7 @@ export default async function processWebhookMergeRequest(
     response.projectId,
     response.mergeRequestId
   );
-  const { transitionKeywords, transitionMap } = metadata;
+  const { transitionKeywords, transitionMap, defaultTransitionMap } = metadata;
   const commitIssues = processCommits(
     transitionKeywords,
     jiraProjectIds,
@@ -204,8 +204,11 @@ export default async function processWebhookMergeRequest(
         const [projectKey] = issueKey.split('-');
         const transitionStatusProject =
           transitionMap.find(
-            ({ jiraProjectKey }) => jiraProjectKey === projectKey
-          ) || {};
+            ({ jiraProjectKey, [`${action}StatusIds`]: statusIds }) =>
+              jiraProjectKey === projectKey && statusIds.length
+          ) ||
+          defaultTransitionMap[0] ||
+          {};
         const transitionStatusIds =
           transitionStatusProject[`${action}StatusIds`];
         if (transitionStatusIds && transitionStatusIds.length) {

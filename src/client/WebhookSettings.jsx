@@ -3,6 +3,7 @@ import React, { Component } from 'react';
 import { Query, Mutation } from 'react-apollo';
 import gql from 'graphql-tag';
 import styled from 'styled-components';
+import Composer from 'react-composer';
 
 import Form, {
   Field,
@@ -27,6 +28,11 @@ const MetadataQuery = gql`
       transitionKeywords
       transitionMap {
         jiraProjectKey
+        mergeStatusIds
+        openStatusIds
+        closeStatusIds
+      }
+      defaultTransitionMap {
         mergeStatusIds
         openStatusIds
         closeStatusIds
@@ -58,6 +64,26 @@ const StatusTableCell = styled.td`
   }
 `;
 
+function buildMeta(map, name, statuses) {
+  map.__meta = map.__meta || {};
+  map.__meta.name = name;
+  ['open', 'close', 'merge'].forEach((statusKey) => {
+    map.__meta[`${statusKey}Statuses`] = [];
+    const idKey = `${statusKey}StatusIds`;
+    if (map[idKey]) {
+      map[idKey].forEach((statusId) => {
+        const status = statuses.find(({ id }) => statusId === id);
+        if (status) {
+          map.__meta[`${statusKey}Statuses`].push({
+            name: status.name,
+            color: status.statusCategory.colorName
+          });
+        }
+      });
+    }
+  });
+}
+
 const getProjectOptionValue = (option) => option.key;
 const getProjectOptionLabel = (option) => `${option.key} - ${option.name}`;
 
@@ -70,6 +96,7 @@ class WebhookSettings extends Component<
   {
     saveMetadata: any,
     upsertTransition: any,
+    setDefaultTransition: any,
     data: *,
     jiraData: *,
     isSaving: boolean
@@ -79,7 +106,10 @@ class WebhookSettings extends Component<
     jiraProjectKey?: string,
     newOpenStatuses?: StatusType[],
     newMergeStatuses?: StatusType[],
-    newCloseStatuses?: StatusType[]
+    newCloseStatuses?: StatusType[],
+    newDefaultOpenStatuses?: StatusType[],
+    newDefaultMergeStatuses?: StatusType[],
+    newDefaultCloseStatuses?: StatusType[]
   }
 > {
   state = {};
@@ -105,6 +135,24 @@ class WebhookSettings extends Component<
   selectCloseStatus = (options) => {
     this.setState({
       newCloseStatuses: options
+    });
+  };
+
+  selectDefaultOpenStatus = (options) => {
+    this.setState({
+      newDefaultOpenStatuses: options
+    });
+  };
+
+  selectDefaultMergeStatus = (options) => {
+    this.setState({
+      newDefaultMergeStatuses: options
+    });
+  };
+
+  selectDefaultCloseStatus = (options) => {
+    this.setState({
+      newDefaultCloseStatuses: options
     });
   };
 
@@ -136,6 +184,23 @@ class WebhookSettings extends Component<
     });
   };
 
+  setDefaultTransition = () => {
+    const {
+      newDefaultOpenStatuses = [],
+      newDefaultMergeStatuses = [],
+      newDefaultCloseStatuses = []
+    } = this.state;
+    const { setDefaultTransition } = this.props;
+    const newTransition = {
+      mergeStatusIds: newDefaultMergeStatuses.map(({ id }) => id),
+      openStatusIds: newDefaultOpenStatuses.map(({ id }) => id),
+      closeStatusIds: newDefaultCloseStatuses.map(({ id }) => id)
+    };
+    setDefaultTransition({
+      variables: sanitizeData(newTransition)
+    });
+  };
+
   saveTransitionKeywords = () => {
     const { transitionKeywords } = this.state;
     const { saveMetadata } = this.props;
@@ -150,8 +215,19 @@ class WebhookSettings extends Component<
     const { data, jiraData, isSaving } = this.props;
     const projects = jiraData.jiraProjects;
     const statuses = jiraData.jiraStatuses;
-    const { transitionMap, transitionKeywords } = data.getWebhookMetadata;
+    const {
+      transitionMap,
+      defaultTransitionMap,
+      transitionKeywords
+    } = data.getWebhookMetadata;
     const availableProjects = [];
+    // There should only be one of these but it returns an array
+    defaultTransitionMap.forEach((transitionMap, index) => {
+      transitionMap.__meta = {
+        id: index
+      };
+      buildMeta(transitionMap, `Fallback Transitions`, statuses);
+    });
     projects.forEach((project) => {
       const map = transitionMap.find(
         ({ jiraProjectKey }) => project.key === jiraProjectKey
@@ -159,23 +235,7 @@ class WebhookSettings extends Component<
       if (!map) {
         availableProjects.push(project);
       } else {
-        map.__meta = map.__meta || {};
-        map.__meta.name = project.name;
-        ['open', 'close', 'merge'].forEach((statusKey) => {
-          map.__meta[`${statusKey}Statuses`] = [];
-          const idKey = `${statusKey}StatusIds`;
-          if (map[idKey]) {
-            map[idKey].forEach((statusId) => {
-              const status = statuses.find(({ id }) => statusId === id);
-              if (status) {
-                map.__meta[`${statusKey}Statuses`].push({
-                  name: status.name,
-                  color: status.statusCategory.colorName
-                });
-              }
-            });
-          }
-        });
+        buildMeta(map, project.name, statuses);
       }
     });
     return (
@@ -196,6 +256,63 @@ class WebhookSettings extends Component<
             Save
           </Button>
         </div>
+        <Form
+          name="set-default-transition"
+          onSubmit={this.setDefaultTransition}
+        >
+          <FormHeader title="Set Default Transition Map" />
+
+          <FormSection name="details">
+            <Field
+              label="On Opened Status"
+              helperText="The Jira status to attempt to transition to when opening a merge request"
+            >
+              <Select
+                options={statuses}
+                isMulti
+                getOptionValue={getStatusOptionValue}
+                getOptionLabel={getStatusOptionLabel}
+                onChange={this.selectDefaultOpenStatus}
+              />
+            </Field>
+            <Field
+              label="On Merged Status"
+              helperText="The Jira status to attempt to transition to when merging a merge request"
+            >
+              <Select
+                options={statuses}
+                isMulti
+                getOptionValue={getStatusOptionValue}
+                getOptionLabel={getStatusOptionLabel}
+                onChange={this.selectDefaultMergeStatus}
+              />
+            </Field>
+            <Field
+              label="On Close Status"
+              helperText="The Jira status to attempt to transition to when closing a merge request without merging"
+            >
+              <Select
+                options={statuses}
+                isMulti
+                getOptionValue={getStatusOptionValue}
+                getOptionLabel={getStatusOptionLabel}
+                onChange={this.selectDefaultCloseStatus}
+              />
+            </Field>
+          </FormSection>
+          <FormFooter>
+            <FormFooter actions={{}}>
+              <Button
+                type="submit"
+                appearance="primary"
+                disabled={isSaving || !this.state.jiraProjectKey}
+                isLoading={isSaving}
+              >
+                Set Default Transition Map
+              </Button>
+            </FormFooter>
+          </FormFooter>
+        </Form>
         <table>
           <thead>
             <tr>
@@ -206,6 +323,21 @@ class WebhookSettings extends Component<
             </tr>
           </thead>
           <tbody>
+            {defaultTransitionMap.map((transitionMap, index) => (
+              <tr key={transitionMap.__meta.id}>
+                <td>{transitionMap.__meta.name}</td>
+                {['open', 'merge', 'close'].map((key) => (
+                  <StatusTableCell key={key}>
+                    {transitionMap.__meta[`${key}Statuses`].map(
+                      ({ name, color }) => (
+                        <Status key={name} text={name} color={color} />
+                      )
+                    )}
+                  </StatusTableCell>
+                ))}
+                <td />
+              </tr>
+            ))}
             {transitionMap.map((transitionMap) => (
               <Mutation
                 key={transitionMap.jiraProjectKey}
@@ -335,68 +467,107 @@ class WebhookSettings extends Component<
 }
 
 export default () => (
-  <Mutation
-    mutation={gql`
-      mutation SetMetadata($transitionKeywords: [String!]) {
-        setWebhookMetadata(transitionKeywords: $transitionKeywords) {
-          success
-        }
-      }
-    `}
-    refetchQueries={['WebhookMetadata']}
-  >
-    {(saveMetadata, { loading: isSaving, error: saveError }) => (
-      <Mutation
-        mutation={gql`
-          mutation UpsertTransition(
-            $jiraProjectKey: String!
-            $openStatusIds: [String!]!
-            $mergeStatusIds: [String!]!
-            $closeStatusIds: [String!]!
-          ) {
-            upsertWebhookTransitionMap(
-              jiraProjectKey: $jiraProjectKey
-              openStatusIds: $openStatusIds
-              closeStatusIds: $closeStatusIds
-              mergeStatusIds: $mergeStatusIds
-            ) {
-              success
+  <Composer
+    components={[
+      ({ render }: *) => (
+        <Mutation
+          mutation={gql`
+            mutation SetMetadata($transitionKeywords: [String!]) {
+              setWebhookMetadata(transitionKeywords: $transitionKeywords) {
+                success
+              }
             }
-          }
-        `}
-        refetchQueries={['WebhookMetadata']}
-      >
-        {(
-          upsertTransitionMap,
-          { loading: isSavingTransition, error: saveTransitionError }
-        ) => (
-          <Query query={JiraQuery}>
-            {({ data: jiraData, loading: jiraLoading, error: jiraError }) => (
-              <Query query={MetadataQuery}>
-                {({ data, loading, error }) => {
-                  if (loading || jiraLoading) {
-                    return <Spinner />;
-                  }
-                  if (error || jiraError) {
-                    console.error(error || jiraError);
-                    return 'Error Happened';
-                  }
-                  return (
-                    <WebhookSettings
-                      saveMetadata={saveMetadata}
-                      upsertTransition={upsertTransitionMap}
-                      data={data}
-                      jiraData={jiraData}
-                      isSaving={isSaving || isSavingTransition}
-                      error={saveError || saveTransitionError}
-                    />
-                  );
-                }}
-              </Query>
-            )}
-          </Query>
-        )}
-      </Mutation>
-    )}
-  </Mutation>
+          `}
+          refetchQueries={['WebhookMetadata']}
+        >
+          {(...args) => render(args)}
+        </Mutation>
+      ),
+      ({ render }: *) => (
+        <Mutation
+          mutation={gql`
+            mutation UpsertTransition(
+              $jiraProjectKey: String!
+              $openStatusIds: [String!]!
+              $mergeStatusIds: [String!]!
+              $closeStatusIds: [String!]!
+            ) {
+              upsertWebhookTransitionMap(
+                jiraProjectKey: $jiraProjectKey
+                openStatusIds: $openStatusIds
+                closeStatusIds: $closeStatusIds
+                mergeStatusIds: $mergeStatusIds
+              ) {
+                success
+              }
+            }
+          `}
+          refetchQueries={['WebhookMetadata']}
+        >
+          {(...args) => render(args)}
+        </Mutation>
+      ),
+      ({ render }: *) => (
+        <Mutation
+          mutation={gql`
+            mutation SetDefaultTransition(
+              $openStatusIds: [String!]!
+              $mergeStatusIds: [String!]!
+              $closeStatusIds: [String!]!
+            ) {
+              setDefaultWebhookTransition(
+                openStatusIds: $openStatusIds
+                closeStatusIds: $closeStatusIds
+                mergeStatusIds: $mergeStatusIds
+              ) {
+                success
+              }
+            }
+          `}
+          refetchQueries={['WebhookMetadata']}
+        >
+          {(...args) => render(args)}
+        </Mutation>
+      ),
+      ({ render }: *) => (
+        <Query query={JiraQuery}>{(data) => render(data)}</Query>
+      ),
+      ({ render }: *) => (
+        <Query query={MetadataQuery}>{(data) => render(data)}</Query>
+      )
+    ]}
+  >
+    {([
+      [saveMetadata, { loading: isSaving, error: saveError }],
+      [
+        upsertTransitionMap,
+        { loading: isSavingTransition, error: saveTransitionError }
+      ],
+      [
+        setDefaultTransition,
+        { loading: isSavingDefaultTransition, error: setDefaultTransitionError }
+      ],
+      { data: jiraData, loading: jiraLoading, error: jiraError },
+      { data, loading, error }
+    ]) => {
+      if (loading || jiraLoading) {
+        return <Spinner />;
+      }
+      if (error || jiraError) {
+        console.error(error || jiraError);
+        return 'Error Happened';
+      }
+      return (
+        <WebhookSettings
+          saveMetadata={saveMetadata}
+          upsertTransition={upsertTransitionMap}
+          setDefaultTransition={setDefaultTransition}
+          data={data}
+          jiraData={jiraData}
+          isSaving={isSaving || isSavingTransition || isSavingDefaultTransition}
+          error={saveError || saveTransitionError || setDefaultTransitionError}
+        />
+      );
+    }}
+  </Composer>
 );

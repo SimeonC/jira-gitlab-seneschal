@@ -30,7 +30,8 @@ import type {
   WebhookErrorType,
   WebhookMetadataType,
   WebhookProjectStatusType,
-  WebhookTransitionMapsType
+  WebhookTransitionMapsType,
+  WebhookTransitionMapType
 } from './apis/webhooks.types';
 import projectMappingApi from './apis/projectMapping';
 import { createWebhooks } from './webhooks';
@@ -362,6 +363,24 @@ export default function(addon: *) {
     return { success: true };
   }
 
+  async function setDefaultWebhookTransition(
+    root: *,
+    {
+      openStatusIds = [],
+      closeStatusIds = [],
+      mergeStatusIds = []
+    }: WebhookTransitionMapType,
+    req: *
+  ): SuccessResponseType {
+    await addon.schema.models.WebhookDefaultTransitionMaps.upsert({
+      clientKey: req.context.clientKey,
+      openStatusIds,
+      closeStatusIds,
+      mergeStatusIds
+    });
+    return { success: true };
+  }
+
   async function upsertWebhookTransitionMap(
     root: *,
     {
@@ -492,6 +511,7 @@ export default function(addon: *) {
       setGitlabCredentials,
       loadGitlabProject,
       setWebhookMetadata,
+      setDefaultWebhookTransition,
       upsertWebhookTransitionMap,
       deleteWebhookTransitionMap,
       createGitlabWebhooks,

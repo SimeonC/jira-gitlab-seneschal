@@ -23,7 +23,8 @@ export type DatabaseType = {
   WebhookQueue: Model<any>,
   WebhookStatuses: Model<any>,
   WebhookTransitionMaps: Model<any>,
-  WebhookTransitions: Model<any>
+  WebhookTransitions: Model<any>,
+  WebhookDefaultTransitionMaps: Model<any>
 };
 
 export default function initializeDatabase(sequelize: *): Promise<void> {
