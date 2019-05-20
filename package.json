@@ -95,6 +95,7 @@
     "raf": "3.4.0",
     "react": "16.5.2",
     "react-apollo": "2.2.3",
+    "react-composer": "5.0.1",
     "react-dev-utils": "5.0.2",
     "react-dom": "16.4.2",
     "react-json-view": "1.19.1",
@@ -171,6 +172,11 @@
     "jest-in-case": "1.0.2",
     "ngrok": "2.3.0",
     "progress": "2.0.1",
+    "prettier": "1.17.1",
     "webpack-hot-middleware": "2.24.2"
+  },
+  "prettier": {
+    "singleQuote": true,
+    "arrowParens": "always"
   }
 }

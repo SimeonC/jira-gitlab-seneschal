@@ -20,4 +20,9 @@ export function postInit(database) {
     foreignKey: 'clientKey',
     sourceKey: 'clientKey'
   });
+  database.WebhookTransitions.hasMany(database.WebhookDefaultTransitionMaps, {
+    as: 'defaultTransitionMap',
+    foreignKey: 'clientKey',
+    sourceKey: 'clientKey'
+  });
 }

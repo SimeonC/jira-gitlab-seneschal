@@ -42,6 +42,10 @@ export async function getWebhookMetadata(
       {
         model: database.WebhookTransitionMaps,
         as: 'transitionMap'
+      },
+      {
+        model: database.WebhookDefaultTransitionMaps,
+        as: 'defaultTransitionMap'
       }
     ],
     attributes: {

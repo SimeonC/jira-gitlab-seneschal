@@ -5,7 +5,7 @@ import gql from 'graphql-tag';
 import moment from 'moment';
 
 import ReactJson from 'react-json-view';
-import Page, { Grid, GridColumn } from '@atlaskit/page';
+import Page, { GridColumn } from '@atlaskit/page';
 import DynamicTable from '@atlaskit/dynamic-table';
 import Button, { ButtonGroup } from '@atlaskit/button';
 import Pagination from '@atlaskit/pagination';

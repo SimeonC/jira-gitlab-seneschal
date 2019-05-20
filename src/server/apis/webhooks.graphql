@@ -14,6 +14,7 @@ type WebhookTransitionMap {
 type WebhookMetadata {
   transitionKeywords: [String!]
   transitionMap: [WebhookTransitionMap!]
+  defaultTransitionMap: [WebhookTransitionMap!]
 }
 
 type WebhookStatus {
@@ -34,13 +35,6 @@ type PaginatedWebhookErrors {
   page: Int!
   totalPages: Int!
   rows: [WebhookError!]!
-}
-
-input WebhookTransitionMapInput {
-  jiraProjectKey: String!
-  openStatusIds: [String!]!
-  mergeStatusIds: [String!]!
-  closeStatusIds: [String!]!
 }
 
 input WebhookMetadataInput {

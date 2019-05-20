@@ -14,17 +14,22 @@ export type WebhookCredentialType = {
   clientKey: string
 };
 
-export type WebhookTransitionMapsType = {
-  jiraProjectKey: string,
+export type WebhookTransitionMapType = {
   mergeStatusIds: string[],
   openStatusIds: string[],
   closeStatusIds: string[]
 };
 
+export type WebhookTransitionMapsType = WebhookTransitionMapType & {
+  jiraProjectKey: string
+};
+
 export type WebhookMetadataType = {
   transitionKeywords: string[],
   // this is a map of jiraProjectKey to transitionId
-  transitionMap: WebhookTransitionMapsType[]
+  transitionMap: WebhookTransitionMapsType[],
+  // This should only be 1/0 length
+  defaultTransitionMap: WebhookTransitionMapsType[]
 };
 
 export type WebhookProjectStatusEnumType = 'pending' | 'healthy' | 'sick';

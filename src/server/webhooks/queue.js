@@ -50,8 +50,11 @@ async function processElement(
     queueElement.secretKey
   );
   // It's OK if this errors - it just means it'll get retried later.
-  const metadata = await getWebhookMetadata(jiraAddon.schema.models, clientKey);
-  console.log('metadata for', clientKey, metadata);
+  const webhookMetadata = await getWebhookMetadata(
+    jiraAddon.schema.models,
+    clientKey
+  );
+  console.log('metadata for', clientKey, webhookMetadata);
   const { baseUrl } = await jiraAddon.settings.get('clientInfo', clientKey);
   const jiraApi = jiraAddon.httpClient({ clientKey });
 
@@ -82,7 +85,7 @@ async function processElement(
         gitlabApiInstance,
         baseUrl,
         jiraProjectKeys,
-        metadata,
+        webhookMetadata,
         processMetadata,
         queueElement.body.changes
       );

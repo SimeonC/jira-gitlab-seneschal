@@ -94,6 +94,11 @@ type Mutations {
   upsertProjectMappingVersion(version: MappingVersionInput!): SuccessResponse
   deleteProjectMappingVersion(id: Int!): SuccessResponse
   setWebhookMetadata(transitionKeywords: [String!]): SuccessResponse
+  setDefaultWebhookTransition(
+    openStatusIds: [String!]
+    closeStatusIds: [String!]
+    mergeStatusIds: [String!]
+  ): SuccessResponse
   upsertWebhookTransitionMap(
     jiraProjectKey: String!
     openStatusIds: [String!]
