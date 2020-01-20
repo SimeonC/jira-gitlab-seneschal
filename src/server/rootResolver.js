@@ -166,6 +166,7 @@ export default function(addon: *) {
     const api = await gitlabApi(addon);
     const projects = await api.Projects.all({
       archived: false,
+      membership: true,
       simple: true
     });
     return projects.map((project) =>
