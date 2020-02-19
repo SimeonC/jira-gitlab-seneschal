@@ -31,9 +31,7 @@ cases(
       name: 'url find and replace',
       projectKeys,
       baseUrl,
-      text: `This tests if ${baseUrl}/browse/${
-        issueKeys[0]
-      } is correctly matched`,
+      text: `This tests if ${baseUrl}/browse/${issueKeys[0]} is correctly matched`,
       foundIssues: [issueKeys[0]],
       resultText: `This tests if ${writeLink(
         issueKeys[0]
@@ -116,12 +114,20 @@ cases(
       )} and lastly ${writeLink(issueKeys[2])} is parsed`
     },
     {
+      name: 'handles subsequent links',
+      projectKeys,
+      baseUrl,
+      text: `This tests if ${issueKeys[0]} ${issueKeys[1]} is parsed`,
+      foundIssues: [issueKeys[0], issueKeys[1]],
+      resultText: `This tests if ${writeLink(issueKeys[0])} ${writeLink(
+        issueKeys[1]
+      )} is parsed`
+    },
+    {
       name: 'should not link inside code blocks',
       projectKeys,
       baseUrl,
-      text: `Outside ${issueKeys[0]} Text \`\`\`Code Block \n ${
-        issueKeys[1]
-      } \`\`\` outside ${issueKeys[2]} again`,
+      text: `Outside ${issueKeys[0]} Text \`\`\`Code Block \n ${issueKeys[1]} \`\`\` outside ${issueKeys[2]} again`,
       foundIssues: [issueKeys[0], issueKeys[2]],
       resultText: `Outside ${writeLink(
         issueKeys[0]
@@ -133,13 +139,9 @@ cases(
       name: 'should link outside code blocks',
       projectKeys,
       baseUrl,
-      text: `Outside Text \`\`\`Code Block \n ${
-        issueKeys[0]
-      } \`\`\` outside again`,
+      text: `Outside Text \`\`\`Code Block \n ${issueKeys[0]} \`\`\` outside again`,
       foundIssues: [],
-      resultText: `Outside Text \`\`\`Code Block \n ${
-        issueKeys[0]
-      } \`\`\` outside again`
+      resultText: `Outside Text \`\`\`Code Block \n ${issueKeys[0]} \`\`\` outside again`
     },
     {
       name: 'should not link inside starting code blocks',
@@ -161,49 +163,33 @@ cases(
       name: 'should not link inside multiple code blocks',
       projectKeys,
       baseUrl,
-      text: `Outside Text \`\`\`Code Block \n ${
-        issueKeys[0]
-      } \`\`\` outside again \`Code Block \n ${issueKeys[1]} \``,
+      text: `Outside Text \`\`\`Code Block \n ${issueKeys[0]} \`\`\` outside again \`Code Block \n ${issueKeys[1]} \``,
       foundIssues: [],
-      resultText: `Outside Text \`\`\`Code Block \n ${
-        issueKeys[0]
-      } \`\`\` outside again \`Code Block \n ${issueKeys[1]} \``
+      resultText: `Outside Text \`\`\`Code Block \n ${issueKeys[0]} \`\`\` outside again \`Code Block \n ${issueKeys[1]} \``
     },
     {
       name: 'should not link inside multiple code blocks',
       projectKeys,
       baseUrl,
-      text: `Outside Text \`\`\`Code Block \n ${
-        issueKeys[0]
-      } \`\`\` outside again \`\`\`Code Block \n ${issueKeys[1]} \`\`\``,
+      text: `Outside Text \`\`\`Code Block \n ${issueKeys[0]} \`\`\` outside again \`\`\`Code Block \n ${issueKeys[1]} \`\`\``,
       foundIssues: [],
-      resultText: `Outside Text \`\`\`Code Block \n ${
-        issueKeys[0]
-      } \`\`\` outside again \`\`\`Code Block \n ${issueKeys[1]} \`\`\``
+      resultText: `Outside Text \`\`\`Code Block \n ${issueKeys[0]} \`\`\` outside again \`\`\`Code Block \n ${issueKeys[1]} \`\`\``
     },
     {
       name: 'should not link inside code string nested in code block',
       projectKeys,
       baseUrl,
-      text: `Outside Text \`\`\`Code Block \n ${
-        issueKeys[0]
-      } \` inner Code Block \n ${issueKeys[1]} \` \`\`\``,
+      text: `Outside Text \`\`\`Code Block \n ${issueKeys[0]} \` inner Code Block \n ${issueKeys[1]} \` \`\`\``,
       foundIssues: [],
-      resultText: `Outside Text \`\`\`Code Block \n ${
-        issueKeys[0]
-      } \` inner Code Block \n ${issueKeys[1]} \` \`\`\``
+      resultText: `Outside Text \`\`\`Code Block \n ${issueKeys[0]} \` inner Code Block \n ${issueKeys[1]} \` \`\`\``
     },
     {
       name: 'should not link inside code block nested in code string',
       projectKeys,
       baseUrl,
-      text: `Outside Text \`Code Block \n ${
-        issueKeys[0]
-      } \`\`\` inner Code Block \n ${issueKeys[1]} \`\`\` \``,
+      text: `Outside Text \`Code Block \n ${issueKeys[0]} \`\`\` inner Code Block \n ${issueKeys[1]} \`\`\` \``,
       foundIssues: [],
-      resultText: `Outside Text \`Code Block \n ${
-        issueKeys[0]
-      } \`\`\` inner Code Block \n ${issueKeys[1]} \`\`\` \``
+      resultText: `Outside Text \`Code Block \n ${issueKeys[0]} \`\`\` inner Code Block \n ${issueKeys[1]} \`\`\` \``
     },
     {
       name: 'should detect escaped code blocks',

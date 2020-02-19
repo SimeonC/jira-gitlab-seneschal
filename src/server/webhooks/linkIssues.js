@@ -10,7 +10,7 @@ function parseTextBlock(
   const matchRegex = new RegExp(
     `(^|\\W|\\[|${regexSafeBaseUrl})(${jiraProjectKeys.join(
       '|'
-    )})\\-([1-9][0-9]*)($|]\\([^)]+\\)|\\W)`,
+    )})\\-([1-9][0-9]*)($|]\\([^)]+\\)|)`,
     'ig'
   );
   const issues = [];

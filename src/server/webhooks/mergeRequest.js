@@ -291,7 +291,7 @@ export default async function processWebhookMergeRequest(
   }
 
   // states are: merged opened closed locked
-  const textIssues = uniq(mrIssues.concat(response.issues)).filter(
+  const textIssues = uniq(mrIssues.concat(response.issues || [])).filter(
     (issueKey) =>
       !commitIssues.find(
         ({ issueKey: commitIssueKey }) => commitIssueKey === issueKey
@@ -306,12 +306,21 @@ export default async function processWebhookMergeRequest(
     );
 
     let newMergeRequestDescription;
-    if (newText && new RegExp(gitlabJiraLinksHeaderRegexp).test(newText)) {
+    const replacementRegexp = new RegExp(
+      `<details>[^<]+${gitlabJiraLinksHeaderRegexp}[^<]+<\\/details>`,
+      'mig'
+    );
+    if (newText) {
       newMergeRequestDescription = newText.replace(
-        new RegExp(
-          `<details>[^<]+${gitlabJiraLinksHeaderRegexp}[^<]+<\\/details>`,
-          'ig'
-        ),
+        replacementRegexp,
+        newSummary
+      );
+    } else if (
+      !newText &&
+      new RegExp(gitlabJiraLinksHeaderRegexp).test(description)
+    ) {
+      newMergeRequestDescription = description.replace(
+        replacementRegexp,
         newSummary
       );
     } else {

@@ -9,51 +9,110 @@ jest.mock('../../apis/jira', () => ({
 }));
 
 describe('processWebhookMergeRequest', () => {
+  let jiraProjectKey;
+  let issueKey;
+  let transitionUrl;
+  let testTransitionStatusToId;
+  let transitionId;
+  let transitionKeyword;
+  let jiraProjectIds;
+  let response;
+  let gitlabApi;
+
   beforeEach(() => {
     mockJiraRequest = jest.fn((method, url, body) => {
-      if (url === transitionUrl) {
-        if (method === 'get') {
+      if (url === transitionUrl && method === 'get') {
+        return Promise.resolve({
+          transitions: [
+            { id: transitionId, to: { id: testTransitionStatusToId } }
+          ]
+        });
+      } else if (
+        url.match(
+          /\/search\?jql=issuekey in \([^)]+\)&fields=issuetype,summary/gi
+        )
+      ) {
+        const issueIds = /\/search\?jql=issuekey in \(([^)]+)\)&fields=issuetype,summary/gi.exec(
+          url
+        );
+        if (issueIds && issueIds[1]) {
           return Promise.resolve({
-            transitions: [
-              { id: transitionId, to: { id: testTransitionStatusToId } }
-            ]
+            issues: issueIds[1].split(',').map((key) => ({
+              key,
+              fields: {
+                summary: `Summary for ${key}`
+              }
+            }))
           });
         }
+        return promise.resolve();
       }
       return Promise.resolve({});
     });
+    jiraProjectKey = 'TC';
+    issueKey = `${jiraProjectKey}-12`;
+    transitionUrl = `/issue/${issueKey}/transitions`;
+    testTransitionStatusToId = 'testTransitionId-01';
+    transitionId = 'transitionId';
+    transitionKeyword = 'Transition';
+    jiraProjectIds = [jiraProjectKey];
+    response = {
+      action: 'open'
+    };
+    gitlabApi = {
+      MergeRequests: {
+        show: () =>
+          Promise.resolve({
+            id: 'testid',
+            description: 'description',
+            title: 'title',
+            state: 'opened',
+            web_url: 'http://web_url'
+          }),
+        commits: () =>
+          Promise.resolve([
+            {
+              title: 'commit title',
+              message: `${transitionKeyword} ${issueKey}`
+            }
+          ]),
+        edit: () => Promise.resolve({})
+      }
+    };
   });
 
-  const jiraProjectKey = 'TC';
-  const issueKey = `${jiraProjectKey}-12`;
-  const transitionUrl = `/issue/${issueKey}/transitions`;
-  const testTransitionStatusToId = 'testTransitionId-01';
-  const transitionId = 'transitionId';
-  const transitionKeyword = 'Transition';
-  let jiraProjectIds = [jiraProjectKey];
-  const response = {
-    action: 'open'
-  };
-  const gitlabApi = {
-    MergeRequests: {
-      show: () =>
-        Promise.resolve({
-          id: 'testid',
-          description: 'description',
-          title: 'title',
-          state: 'opened',
-          web_url: 'http://web_url'
-        }),
-      commits: () =>
-        Promise.resolve([
-          {
-            title: 'commit title',
-            message: `${transitionKeyword} ${issueKey}`
-          }
-        ]),
-      edit: () => Promise.resolve({})
-    }
-  };
+  test('should replace existing description block', async () => {
+    const metadata = {
+      transitionKeywords: [transitionKeyword],
+      transitionMap: [],
+      defaultTransitionMap: []
+    };
+    const description = `Adding support for the “phone” type field with correct validation and formatting.\n\nCompletes [${issueKey}](http://jira.com/browse/${issueKey})\n\n<details>\n  <summary>All Jira Seneschal Links</summary>\n  \n  | Ticket | Title |\n  | --- | --- |\n  | [${issueKey}](http://jira.com/browse/${issueKey}) | Summary for TC-12 |\n</details>\n\n`;
+    gitlabApi.MergeRequests.show = () =>
+      Promise.resolve({
+        id: 'testid',
+        description,
+        title: 'title',
+        state: 'opened',
+        web_url: 'http://web_url'
+      });
+    gitlabApi.MergeRequests.edit = jest.fn(() => Promise.resolve({}));
+    await processWebhookMergeRequest(
+      {},
+      gitlabApi,
+      'http://jira.com',
+      jiraProjectIds,
+      metadata,
+      response
+    );
+    expect(gitlabApi.MergeRequests.edit).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+      {
+        description
+      }
+    );
+  });
 
   test('should correctly get map and trigger transition', async () => {
     const metadata = {
