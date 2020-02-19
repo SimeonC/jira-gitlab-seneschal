@@ -80,7 +80,10 @@ async function processIssue(project: ProcessingProjectType) {
       projectId
     }
   });
-  const newLabels = difference(issue.labels, labels.map(({ label }) => label));
+  const newLabels = difference(
+    issue.labels,
+    labels.map(({ label }) => label)
+  );
   await database.MigrationLabels.bulkCreate(
     newLabels.map((label) => ({ label, projectId }))
   );

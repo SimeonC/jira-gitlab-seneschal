@@ -1,5 +1,5 @@
 // @flow
-import GitlabApi from 'gitlab';
+import { Gitlab } from 'gitlab';
 import { getCredential } from './credentials';
 import type { GitlabCredential } from './credentials';
 
@@ -8,8 +8,8 @@ export default async function gitlabApi(jiraAddon: *) {
     jiraAddon,
     'gitlab'
   ): any);
-  return new GitlabApi({
-    url: credential.appUrl,
+  return new Gitlab({
+    host: credential.appUrl,
     token: credential.token
   });
 }

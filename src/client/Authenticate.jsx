@@ -23,7 +23,7 @@ export default class Authenticate extends Component<PropsType> {
           }
         `}
       >
-        {({ loading, error, data }) => {
+        {({ loading, error, data = {} }) => {
           if (loading) {
             return <Spinner />;
           }

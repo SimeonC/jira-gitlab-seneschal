@@ -79,7 +79,7 @@ class WebhookErrors extends Component<
         },
         fetchPolicy: 'no-cache'
       })
-      .then(({ data }) => {
+      .then(({ data = {} }) => {
         this.setState({
           isLoading: false,
           pages: data.webhookErrors.totalPages,
@@ -141,7 +141,7 @@ class WebhookErrors extends Component<
         mutation: retryQuery,
         variables: { id }
       })
-      .then(({ data }) => {
+      .then(({ data = {} }) => {
         if (!data.retryWebhook.success) {
           console.error(data);
           this.setState({
@@ -160,7 +160,7 @@ class WebhookErrors extends Component<
         mutation: deleteQuery,
         variables: { id }
       })
-      .then(({ data }) => {
+      .then(({ data = {} }) => {
         if (!data.deleteWebhookFailure.success) {
           console.error(data);
           this.setState({
@@ -180,7 +180,7 @@ class WebhookErrors extends Component<
       .mutate({
         mutation: deleteAllQuery
       })
-      .then(({ data }) => {
+      .then(({ data = {} }) => {
         if (!data.deleteAllWebhookFailures.success) {
           console.error(data);
           this.setState({

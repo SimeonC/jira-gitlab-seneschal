@@ -10,9 +10,7 @@ export default class Initialising extends Component {
       <Query
         query={gql`
           query {
-            processingProject(gitlabProjectId: "${
-              this.props.gitlabProjectId
-            }") {
+            processingProject(gitlabProjectId: "${this.props.gitlabProjectId}") {
               isLoading
               completedCount
               failedCount
@@ -22,7 +20,7 @@ export default class Initialising extends Component {
         `}
         pollInterval={2500}
       >
-        {({ data, loading, error }) => {
+        {({ data = {}, loading, error }) => {
           if (
             loading ||
             !data.processingProject ||

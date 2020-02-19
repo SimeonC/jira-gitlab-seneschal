@@ -123,7 +123,7 @@ class Webhooks extends Component<
         <GridColumn>
           <Grid>
             <Query query={webhooksQuery}>
-              {({ loading, error, data }) => (
+              {({ loading, error, data = {}, ...debug }) => (
                 <DynamicTable
                   isFixedSize
                   caption={<h4>Projects with webhooks</h4>}
@@ -183,7 +183,7 @@ class Webhooks extends Component<
             }
           `}
         >
-          {({ loading, error, data }) =>
+          {({ loading, error, data = {} }) =>
             error ? (
               <span>{error.toString()}</span>
             ) : (

@@ -294,7 +294,7 @@ class Mapping extends Component<{
                   }
                 `}
               >
-                {({ data: jiraData, loading, error }) => {
+                {({ data: jiraData = {}, loading, error }) => {
                   if (loading) {
                     return <Spinner />;
                   }
@@ -397,7 +397,7 @@ export default class Mapper extends Component<{
           gitlabProjectId
         }}
       >
-        {({ loading, data }) => {
+        {({ loading, data = {} }) => {
           if (loading) return <Spinner />;
           return (
             <Mapping

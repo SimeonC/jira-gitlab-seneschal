@@ -44,7 +44,7 @@ export default class Loader extends Component {
         query={isProjectLoadingQuery}
         variables={{ projectId: gitlabProjectId }}
       >
-        {({ loading, data }) => {
+        {({ loading, data = {} }) => {
           if (loading) return <Spinner />;
           const currentProject = data.processingProject;
           if (currentProject) {

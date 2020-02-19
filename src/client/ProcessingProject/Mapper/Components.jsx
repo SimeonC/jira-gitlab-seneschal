@@ -57,7 +57,7 @@ export default class MappingComponents extends Component<PropsType> {
     const { projectId, labels, jiraData } = this.props;
     return (
       <Query query={ListQuery} variables={{ gitlabProjectId: projectId }}>
-        {({ data, loading, error }) => {
+        {({ data = {}, loading, error }) => {
           if (loading) return <Spinner />;
           if (error) {
             console.error(error);

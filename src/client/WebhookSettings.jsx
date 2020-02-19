@@ -547,8 +547,8 @@ export default () => (
         setDefaultTransition,
         { loading: isSavingDefaultTransition, error: setDefaultTransitionError }
       ],
-      { data: jiraData, loading: jiraLoading, error: jiraError },
-      { data, loading, error }
+      { data: jiraData = {}, loading: jiraLoading, error: jiraError },
+      { data = {}, loading, error }
     ]) => {
       if (loading || jiraLoading) {
         return <Spinner />;

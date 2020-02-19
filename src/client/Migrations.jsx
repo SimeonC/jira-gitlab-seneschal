@@ -131,16 +131,28 @@ const renderProjectProgress = (project) => {
   let failureFragment = null;
   if (
     project.isLoading ||
-    (project.isProcessing && project.completedCount + project.failedCount < project.totalCount)
+    (project.isProcessing &&
+      project.completedCount + project.failedCount < project.totalCount)
   ) {
-    loadingFragment = <Fragment><Spinner /> </Fragment>;
+    loadingFragment = (
+      <Fragment>
+        <Spinner />{' '}
+      </Fragment>
+    );
   }
   if (project.failedCount > 0) {
-    failureFragment = <Fragment> (<ErrorCount>{project.failedCount}</ErrorCount>)</Fragment>;
+    failureFragment = (
+      <Fragment>
+        {' '}
+        (<ErrorCount>{project.failedCount}</ErrorCount>)
+      </Fragment>
+    );
   }
   return (
     <span>
-      {loadingFragment}{project.completedCount}{failureFragment} / {project.totalCount}
+      {loadingFragment}
+      {project.completedCount}
+      {failureFragment} / {project.totalCount}
     </span>
   );
 };
@@ -184,8 +196,8 @@ export default class Migrations extends Component {
                 </Button>
               )}
             </Mutation>
-            <Query query={processingQuery} pollInterval={2500}>
-              {({ loading, error, data, stopPolling }) => {
+            <Query query={processingQuery} pollInterval={30000}>
+              {({ loading, error, data = {}, stopPolling }) => {
                 if (
                   error ||
                   !data.processingProjects ||
@@ -193,7 +205,8 @@ export default class Migrations extends Component {
                     (project) =>
                       project.isLoading ||
                       (project.isProcessing &&
-                        project.completedCount + project.failedCount < project.totalCount)
+                        project.completedCount + project.failedCount <
+                          project.totalCount)
                   )
                 ) {
                   stopPolling();
@@ -257,7 +270,7 @@ export default class Migrations extends Component {
             }
           `}
         >
-          {({ loading, error, data }) =>
+          {({ loading, error, data = {} }) =>
             error ? (
               <span>{error.toString()}</span>
             ) : (

@@ -117,12 +117,11 @@ export default async function createJiraIssue(
   }, []);
 
   if (mappingStatuses.length) {
-    jiraStatus = mappingStatuses.find(
-      ({ gitlabLabel, issueTypeId }) =>
-        labelIssueType && issueTypeId === labelIssueType
-          ? labelIssueType.issueTypeId
-          : mapping.defaultIssueTypeId &&
-            labels.find((label) => label === gitlabLabel)
+    jiraStatus = mappingStatuses.find(({ gitlabLabel, issueTypeId }) =>
+      labelIssueType && issueTypeId === labelIssueType
+        ? labelIssueType.issueTypeId
+        : mapping.defaultIssueTypeId &&
+          labels.find((label) => label === gitlabLabel)
     );
   }
 
@@ -223,9 +222,7 @@ export default async function createJiraIssue(
   }
 
   await gitlabApi.Issues.edit(gitlabProjectId, gitlabIssueIid, {
-    description: `Migrated to: [${jiraIssue.key}](${jiraBaseUrl}/browse/${
-      jiraIssue.key
-    })\n\n${description}`
+    description: `Migrated to: [${jiraIssue.key}](${jiraBaseUrl}/browse/${jiraIssue.key})\n\n${description}`
   });
 
   try {

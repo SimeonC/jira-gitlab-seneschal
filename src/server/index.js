@@ -70,16 +70,12 @@ function sendFrontendPage(req, res, htmlFileContent) {
   let htmlContent = htmlFileContent;
   htmlContent = htmlContent.replace(
     /<\/head>/gi,
-    `<meta name="token" content="${
-      req.context.token
-    }"><meta name="route" content="${req.query.route}"></head>`
+    `<meta name="token" content="${req.context.token}"><meta name="route" content="${req.query.route}"></head>`
   );
   htmlContent = htmlContent.replace(
     // this is unconventional but this must be loaded before `window.AP...` can be used
     /<body>/gi,
-    `<body><script src="${
-      req.context.hostBaseUrl
-    }/atlassian-connect/all.js"></script>`
+    `<body><script src="${req.context.hostBaseUrl}/atlassian-connect/all.js"></script>`
   );
   res.set('Content-Type', 'text/html');
   res.send(htmlContent);

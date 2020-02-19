@@ -1,6 +1,6 @@
 // @flow
 import React, { Component, createRef } from 'react';
-import { Mutation } from 'react-apollo';
+import { Mutation, Query } from 'react-apollo';
 import gql from 'graphql-tag';
 import Form, {
   Field,
@@ -10,6 +10,8 @@ import Form, {
 } from '@atlaskit/form';
 import FieldText from '@atlaskit/field-text';
 import Button from '@atlaskit/button';
+import Spinner from '@atlaskit/spinner';
+import CheckIcon from '@atlaskit/icon/glyph/check-circle';
 
 type PropsType = {
   isSaving: boolean,
@@ -39,11 +41,13 @@ class FormContent extends Component<PropsType, StateType> {
             {
               isSetup {
                 success
+                currentUrl
               }
             }
           `,
           data: {
-            isSetup: data.setGitlabCredentials
+            isSetup: data.setGitlabCredentials,
+            currentUrl: this.state.appUrl
           }
         });
       }
@@ -73,6 +77,42 @@ class FormContent extends Component<PropsType, StateType> {
           title="Gitlab Details"
           description="Please fill out the details for your gitlab instance to connect to"
         />
+
+        <Query
+          query={gql`
+            {
+              isSetup {
+                success
+                currentUrl
+                username
+              }
+            }
+          `}
+        >
+          {({ loading, error, data = {} }) => {
+            if (loading) {
+              return <Spinner />;
+            }
+            if (error || !data || !data.isSetup.success) {
+              return null;
+            }
+            return (
+              <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                <CheckIcon primaryColor="green" />
+                <div style={{ margin: '0 6px' }}>
+                  Connected
+                  <br />
+                  <strong>Site: </strong>
+                  {data.isSetup.currentUrl}
+                  <br />
+                  <strong>Username: </strong>
+                  {data.isSetup.username}
+                  <br />
+                </div>
+              </div>
+            );
+          }}
+        </Query>
 
         <FormSection name="details">
           <Field
@@ -127,7 +167,7 @@ export default () => (
       }
     `}
   >
-    {(setCredentials, { data, loading, error }) => (
+    {(setCredentials, { data = {}, loading, error }) => (
       <FormContent
         onSubmit={setCredentials}
         response={data}

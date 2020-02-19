@@ -43,8 +43,14 @@ type SuccessResponse {
   success: Boolean
 }
 
+type IsSetupResponse {
+  success: Boolean
+  currentUrl: String
+  username: String
+}
+
 type Queries {
-  isSetup: SuccessResponse
+  isSetup: IsSetupResponse
   jiraProjects: [JiraProject!]!
   gitlabProjects: [GitlabProject!]!
   processingFailures: [ProcessingFailure]

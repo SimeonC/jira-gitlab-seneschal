@@ -5,7 +5,7 @@ import path from 'path';
 import { fork } from 'child_process';
 import gitlabApi from './apis/gitlab';
 import { jiraRequest } from './apis/jira';
-import { setCredential } from './apis/credentials';
+import { getCredential, setCredential } from './apis/credentials';
 import {
   allProjects,
   getWebhookErrors,
@@ -36,6 +36,7 @@ import type {
 import projectMappingApi from './apis/projectMapping';
 import { createWebhooks } from './webhooks';
 import type { DatabaseType } from './models';
+import type { GitlabCredential } from './apis/credentials';
 
 type SuccessResponseType = {
   success: boolean
@@ -77,8 +78,23 @@ export default function(addon: *) {
   });
 
   async function isSetup() {
+    let currentUrl;
+    let success = false;
+    let username;
+    try {
+      const api = await gitlabApi(addon);
+      ({ username } = await api.Users.current());
+      const credential: GitlabCredential = (await getCredential(
+        addon,
+        'gitlab'
+      ): any);
+      currentUrl = credential.appUrl;
+      success = true;
+    } catch (e) {}
     return {
-      success: await testGitlabCredentials(database, addon)
+      success,
+      username,
+      currentUrl
     };
   }
 
