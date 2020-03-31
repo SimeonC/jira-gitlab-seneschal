@@ -1,9 +1,11 @@
 // @flow
 import uniq from 'lodash/uniq';
+import uniqBy from 'lodash/uniqBy';
 import type { WebhookProcessResponseType } from './queue';
 import { jiraRequest } from '../apis/jira';
 import linkIssues from './linkIssues';
 import type { WebhookMetadataType } from '../apis/webhooks.types';
+import sendDevInfo from './sendDevInfo';
 
 function extractTickets(regex: string, search: string) {
   const tickets = [];
@@ -144,13 +146,17 @@ async function buildGitlabLinksSummary(
 
 export default async function processWebhookMergeRequest(
   jiraApi: *,
+  jiraAddon: *,
+  clientKey: string,
   gitlabApi: *,
   baseJiraUrl: string,
   jiraProjectIds: string[],
   metadata: WebhookMetadataType,
   response: WebhookProcessResponseType,
-  changes?: *
+  hookData?: * = {},
+  queueElementId: number
 ) {
+  const { changes } = hookData;
   let wasWip = false;
   let isWip = false;
   if (changes && changes.title) {
@@ -169,16 +175,11 @@ export default async function processWebhookMergeRequest(
   )
     return;
   const action = response.action === 'reopen' ? 'open' : response.action;
-  const {
-    id,
-    description,
-    title,
-    state,
-    web_url: mergeRequestUrl
-  } = await gitlabApi.MergeRequests.show(
+  const mrData = await gitlabApi.MergeRequests.show(
     response.projectId,
     response.mergeRequestId
   );
+  const { id, description, title, state, web_url: mergeRequestUrl } = mrData;
   if (isWip !== wasWip && state !== 'opened' && response.action === 'update') {
     return;
   }
@@ -203,7 +204,7 @@ export default async function processWebhookMergeRequest(
         const transitionStatusProject =
           transitionMap.find(
             ({ jiraProjectKey, [`${action}StatusIds`]: statusIds }) =>
-              jiraProjectKey === projectKey && statusIds.length
+              jiraProjectKey === projectKey && statusIds && statusIds.length
           ) ||
           defaultTransitionMap[0] ||
           {};
@@ -357,5 +358,127 @@ export default async function processWebhookMergeRequest(
     } catch (error) {
       console.error('remote link error', error);
     }
+  });
+
+  // This timestamp doesn't include seconds / milliseconds
+  const updateSequenceId =
+    new Date(hookData.object_attributes.updated_at).getTime() + queueElementId;
+  const prStatusMap = {
+    merged: 'MERGED',
+    opened: 'OPEN',
+    closed: 'DECLINED',
+    locked: 'UNKNOWN'
+  };
+  const author = await gitlabApi.Users.show(mrData.author.id);
+  const approvalState = await gitlabApi.MergeRequests.approvalState(
+    response.projectId,
+    response.mergeRequestId
+  );
+
+  await sendDevInfo(jiraAddon, clientKey, baseJiraUrl, {
+    updateSequenceId,
+    project: hookData.project,
+    commits: await commits.reduce(async (linkedCommits, commit) => {
+      const thisCommitIssues = processCommits(
+        transitionKeywords,
+        jiraProjectIds,
+        [commit]
+      );
+      if (thisCommitIssues.length) {
+        const diffs = await gitlabApi.Commits.diff(
+          hookData.project.id,
+          commit.id
+        );
+        linkedCommits.push({
+          id: commit.id,
+          issueKeys: thisCommitIssues.map((i) => i.issueKey),
+          updateSequenceId,
+          hash: commit.id,
+          message: commit.message,
+          author: {
+            name: commit.author_name,
+            email: commit.author_email
+          },
+          fileCount: diffs.length,
+          url: `${hookData.project.web_url}/commits/${commit.id}`,
+          files: diffs.map((diff) => ({
+            path: diff.new_path,
+            url: `${hookData.project.web_url}/blob/${
+              commit.id
+            }/${diff.new_path || diff.old_path}`,
+            changeType:
+              diff.new_file && diff.old_path
+                ? 'COPIED'
+                : diff.new_file
+                ? 'ADDED'
+                : diff.renamed_file
+                ? 'MOVED'
+                : diff.deleted_file
+                ? 'DELETED'
+                : diff.new_path !== diff.old_path
+                ? 'MOVED'
+                : 'MODIFIED',
+            ...diff.diff
+              .replace(/@@/gi, '\n@@')
+              .split('\n')
+              .reduce(
+                (result, string) => {
+                  if (string[0] === '-') result.linesRemoved += 1;
+                  else if (string[0] === '+') result.linesAdded += 1;
+                  return result;
+                },
+                { linesRemoved: 0, linesAdded: 0 }
+              )
+          })),
+          authorTimestamp: commit.created_at,
+          displayId: commit.short_id
+        });
+      }
+      return linkedCommits;
+    }, []),
+    branches: [],
+    pullRequests: [
+      {
+        id: `${id}`,
+        issueKeys: uniq(
+          textIssues.concat(commitIssues.map(({ issueKey }) => issueKey))
+        ),
+        updateSequenceId,
+        status: prStatusMap[state],
+        title,
+        author: {
+          name: author.name,
+          email: author.email || author.public_email
+        },
+        commentCount: mrData.user_notes_count,
+        sourceBranch: mrData.source_branch,
+        sourceBranchUrl: `${hookData.project.web_url}/tree/${mrData.source_branch}`,
+        lastUpdate: mrData.updated_at,
+        destinationBranch: mrData.target_branch,
+        reviewers: (approvalState.rules || []).reduce((approvers, rule) => {
+          const allApprovers = rule.eligible_approvers
+            .concat(rule.users)
+            .map((a) => ({ ...a, approvalStatus: 'UNAPPROVED' }));
+          const newApprovers = rule.approved_by.map((person) => ({
+            ...person,
+            approvalStatus: 'APPROVED'
+          }));
+          const uniquedApprovers = uniqBy(
+            newApprovers.concat(allApprovers),
+            ({ id }) => id
+          );
+          return approvers.concat(
+            uniquedApprovers.map((a) => ({
+              name: a.name,
+              url: a.web_url,
+              avatar: a.avatar_url,
+              approvalStatus: a.approvalStatus || 'UNAPPROVED'
+            }))
+          );
+        }, []),
+        url: mrData.web_url,
+        displayId: mrData.references.full
+      }
+    ]
   });
 }

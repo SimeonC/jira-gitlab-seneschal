@@ -9,6 +9,7 @@ import type {
   WebhookMetadataType
 } from './webhooks.types';
 import { WEBHOOK_TYPE_KEYS } from './webhooks.types';
+import { version } from '../../../package.json';
 
 export function isValidWebhookType(type: WebhookType | string): boolean {
   return WEBHOOK_TYPE_KEYS.indexOf(type) !== -1;
@@ -78,7 +79,8 @@ export async function registerProject(
   return await upsertProject(database, projectId, {
     name: projectName,
     url: projectUrl,
-    status: 'pending'
+    status: 'pending',
+    version
   });
 }
 

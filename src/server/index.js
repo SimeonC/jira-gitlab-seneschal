@@ -75,7 +75,7 @@ function sendFrontendPage(req, res, htmlFileContent) {
   htmlContent = htmlContent.replace(
     // this is unconventional but this must be loaded before `window.AP...` can be used
     /<body>/gi,
-    `<body><script src="${req.context.hostBaseUrl}/atlassian-connect/all.js"></script>`
+    `<body><script src="https://connect-cdn.atl-paas.net/all.js"></script>`
   );
   res.set('Content-Type', 'text/html');
   res.send(htmlContent);

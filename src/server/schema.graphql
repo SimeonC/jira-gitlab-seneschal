@@ -49,8 +49,18 @@ type IsSetupResponse {
   username: String
 }
 
+type AppSettings {
+  useGlances: String
+}
+
+type DevToolsStatus {
+  status: String
+}
+
 type Queries {
+  appSettings: AppSettings
   isSetup: IsSetupResponse
+  devToolsStatus: DevToolsStatus
   jiraProjects: [JiraProject!]!
   gitlabProjects: [GitlabProject!]!
   processingFailures: [ProcessingFailure]
@@ -79,7 +89,12 @@ type Queries {
 }
 
 type Mutations {
+  setAppSetting(key: String!, value: String!): SuccessResponse
   setGitlabCredentials(appUrl: String!, token: String!): SuccessResponse
+  setDevToolsCredentials(
+    clientId: String!
+    clientToken: String!
+  ): DevToolsStatus
   loadGitlabProject(projectId: String): SuccessResponse
   setProjectMapping(
     gitlabProjectId: String

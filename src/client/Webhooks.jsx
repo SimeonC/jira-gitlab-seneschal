@@ -65,6 +65,7 @@ const webhooksQuery = gql`
       name
       url
       status
+      outOfDate
     }
   }
 `;
@@ -84,8 +85,7 @@ class Webhooks extends Component<
     });
   };
 
-  createWebhook = () => {
-    const { gitlabProjectId } = this.state;
+  upsertWebhook = (gitlabProjectId) => {
     const { createWebhook } = this.props;
     if (!gitlabProjectId) return;
     createWebhook({
@@ -156,10 +156,26 @@ class Webhooks extends Component<
                       {
                         key: 'status',
                         content: (
-                          <Status
-                            text={startCase(webhook.status)}
-                            color={statusColor(webhook.status)}
-                          />
+                          <div>
+                            <Status
+                              text={startCase(webhook.status)}
+                              color={
+                                webhook.outOfDate
+                                  ? 'yellow'
+                                  : statusColor(webhook.status)
+                              }
+                            />
+                            {(true ||
+                              webhook.status === 'sick' ||
+                              webhook.status === 'pending' ||
+                              webhook.outOfDate) && (
+                              <Button
+                                onClick={() => this.upsertWebhook(webhook.id)}
+                              >
+                                Update Webhook
+                              </Button>
+                            )}
+                          </div>
                         )
                       }
                     ]
@@ -201,7 +217,7 @@ class Webhooks extends Component<
                   appearance="primary"
                   isDisabled={!this.state.gitlabProjectId}
                   isLoading={this.props.isSaving}
-                  onClick={this.createWebhook}
+                  onClick={() => this.upsertWebhook(this.state.gitlabProjectId)}
                 >
                   Create Webhooks
                 </Button>

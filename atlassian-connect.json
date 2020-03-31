@@ -19,10 +19,10 @@
     "installed": "installed"
   },
   "scopes": [
-    "read",
-    "write",
-    "admin",
-    "project_admin"
+    "READ",
+    "WRITE",
+    "ADMIN",
+    "PROJECT_ADMIN"
   ],
   "modules": {
     "jiraIssueGlances": [
@@ -31,7 +31,7 @@
         "icon": {
           "width": 32,
           "height": 32,
-          "url": "/assets/gitlab-logo.svg"
+          "url": "{{localBaseUrl}}/assets/gitlab-logo.svg"
         },
         "content": {
           "type": "label",
@@ -45,7 +45,17 @@
         },
         "name": {
           "value": "GitLab Seneschal"
-        }
+        },
+        "conditions": [
+          {
+            "condition": "entity_property_equal_to",
+            "params": {
+              "entity": "addon",
+              "propertyKey": "useGlances",
+              "value": "true"
+            }
+          }
+        ]
       }
     ],
     "webPanels": [
@@ -55,7 +65,17 @@
         "name": {
           "value": "GitLab Merge Requests"
         },
-        "url": "/gitlab-seneschal-merge-requests"
+        "url": "/gitlab-seneschal-merge-requests",
+        "conditions": [
+          {
+            "condition": "entity_property_equal_to",
+            "params": {
+              "entity": "addon",
+              "propertyKey": "useGlances",
+              "value": "true"
+            }
+          }
+          ]
       }
     ],
     "configurePage": {
@@ -70,6 +90,29 @@
           "condition": "user_is_admin"
         }
       ]
+    },
+    "jiraDevelopmentTool": {
+      "url": "https://gitlab.com",
+      "application": {
+        "value": "GitLab"
+      },
+      "logoUrl": "{{localBaseUrl}}/assets/gitlab-logo.svg",
+      "capabilities": [
+        "commit",
+        "pull_request"
+      ],
+      "name": {
+        "value": "GitLab"
+      },
+      "key": "gitlab-seneschal-development"
+    },
+    "jiraDeploymentInfoProvider": {
+      "homeUrl": "https://gitlab.com",
+      "logoUrl": "{{localBaseUrl}}/assets/gitlab-logo.svg",
+      "name": {
+        "value": "GitLab CI Deployments"
+      },
+      "key": "gitlab-seneschal-deployment"
     },
     "webSections": [
       {
