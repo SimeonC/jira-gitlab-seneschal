@@ -1,4 +1,4 @@
-FROM node:8 as builder
+FROM node:12.16.0 as builder
 
 WORKDIR /usr/src/app
 
@@ -10,7 +10,7 @@ COPY . .
 
 RUN npm run-script build
 
-FROM node:8
+FROM node:12.16.0
 
 WORKDIR /usr/src/app
 
