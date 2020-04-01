@@ -38,7 +38,8 @@ export type WebhookProjectStatusType = {
   id: string,
   name: string,
   url: string,
-  status: WebhookProjectStatusEnumType
+  status: WebhookProjectStatusEnumType,
+  version: string
 };
 
 export type WebhookErrorType = {

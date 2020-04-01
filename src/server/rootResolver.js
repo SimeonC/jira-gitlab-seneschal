@@ -5,7 +5,12 @@ import path from 'path';
 import { fork } from 'child_process';
 import gitlabApi from './apis/gitlab';
 import { jiraRequest } from './apis/jira';
-import { getCredential, setCredential } from './apis/credentials';
+import {
+  getCredential,
+  getDevToolsToken,
+  setCredential,
+  setDevToolsCredential
+} from './apis/credentials';
 import {
   allProjects,
   getWebhookErrors,
@@ -96,6 +101,104 @@ export default function(addon: *) {
       username,
       currentUrl
     };
+  }
+
+  async function devToolsStatus(root: *, params: *, req: *) {
+    try {
+      const bearer = await getDevToolsToken(addon, req.context.clientKey);
+      return { status: bearer ? 'connected' : 'disconnected' };
+    } catch (e) {}
+    return { status: 'disconnected' };
+  }
+
+  async function setDevToolsCredentials(
+    root: *,
+    { clientId, clientToken }: { clientId: string, clientToken: string },
+    req: *
+  ) {
+    try {
+      await setDevToolsCredential(addon, req.context.clientKey, {
+        clientId,
+        clientToken
+      });
+    } catch (error) {
+      console.error(error);
+    }
+    return await devToolsStatus(root, {}, req);
+  }
+
+  async function appSettings(root: *, params: *, req: *) {
+    const keys = await new Promise((resolve, reject) => {
+      addon.httpClient(req).get(
+        {
+          uri: `/rest/atlassian-connect/1/addons/gitlab-seneschal/properties`
+        },
+        (err, res, body) => {
+          if (err) reject(err);
+          else {
+            try {
+              const { keys } = JSON.parse(body);
+              resolve(keys);
+            } catch (err) {
+              reject();
+            }
+          }
+        }
+      );
+    });
+    const values = await Promise.all(
+      keys.map(
+        ({ key, self }) =>
+          new Promise((resolve, reject) => {
+            addon.httpClient(req).get(
+              {
+                uri: self
+              },
+              (err, res, body) => {
+                if (err) reject(err);
+                else {
+                  try {
+                    resolve(JSON.parse(body));
+                  } catch (err) {
+                    reject();
+                  }
+                }
+              }
+            );
+          })
+      )
+    );
+    return values.reduce(
+      (result, { key, value }) => ({ ...result, [key]: value }),
+      {}
+    );
+  }
+
+  const validKeys = ['useGlances'];
+  async function setAppSetting(
+    root: *,
+    params: { key: string, value: string },
+    req: *
+  ) {
+    if (validKeys.indexOf(params.key) === -1)
+      throw new Error(
+        `Please pass a valid key out of; ${validKeys.join(', ')}`
+      );
+    return await new Promise((resolve, reject) => {
+      addon.httpClient(req).put(
+        {
+          uri: `/rest/atlassian-connect/1/addons/gitlab-seneschal/properties/${params.key}`,
+          body: params.value,
+          json: true
+        },
+        (err, res, body) => {
+          if (err) reject(err);
+          else {
+            resolve({ success: true });
+          }
+        }
+      );
+    });
   }
 
   async function jiraProjects(root: *, params: *, req: *) {
@@ -329,7 +432,7 @@ export default function(addon: *) {
     try {
       await setCredential(addon, 'gitlab', { appUrl, token });
       return {
-        success: testGitlabCredentials(addon.schema.models)
+        success: testGitlabCredentials(addon.schema.models, addon)
       };
     } catch (error) {
       console.error(error);
@@ -504,6 +607,8 @@ export default function(addon: *) {
   return projectMappingApi(addon, {
     Queries: {
       isSetup,
+      devToolsStatus,
+      appSettings,
       jiraProjects,
       gitlabProjects,
       processingFailures,
@@ -525,7 +630,9 @@ export default function(addon: *) {
       webhookErrors
     },
     Mutations: {
+      setAppSetting,
       setGitlabCredentials,
+      setDevToolsCredentials,
       loadGitlabProject,
       setWebhookMetadata,
       setDefaultWebhookTransition,

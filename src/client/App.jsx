@@ -10,7 +10,7 @@ import Migrations from './Migrations';
 import Webhooks from './Webhooks';
 import WebhookErrors from './WebhookErrors';
 import ProcessingProject from './ProcessingProject';
-import GitlabTokenForm from './GitlabTokenForm';
+import Setup from './Setup';
 
 // Step 1. Select Gitlab Project
 // Step 2. Load Gitlab Project into file system
@@ -43,7 +43,7 @@ export default class App extends Component {
                 <Route path="/webhooks" component={Webhooks} />
                 <Route path="/webhook-errors" component={WebhookErrors} />
                 <Route path="/migrations" component={Migrations} />
-                <Route path="/setup" component={GitlabTokenForm} />
+                <Route path="/setup" component={Setup} />
                 <Route render={() => <Redirect to={defaultRoute} />} />
               </Switch>
             </HashRouter>

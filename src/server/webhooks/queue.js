@@ -19,6 +19,7 @@ export type WebhookProcessResponseType = {
 };
 
 type QueueElement = {
+  id: number,
   key: string,
   secretKey: string,
   body: *
@@ -82,12 +83,15 @@ async function processElement(
       };
       await processWebhookMergeRequest(
         jiraApi,
+        jiraAddon,
+        clientKey,
         gitlabApiInstance,
         baseUrl,
         jiraProjectKeys,
         webhookMetadata,
         processMetadata,
-        queueElement.body.changes
+        queueElement.body,
+        queueElement.id
       );
       break;
   }
