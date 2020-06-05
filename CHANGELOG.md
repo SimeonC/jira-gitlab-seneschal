@@ -1,6 +1,20 @@
-# Change Log
+# Changelog
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+## [2.5.0](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.4.2...v2.5.0) (2020-06-05)
+
+
+### Features
+
+* dev tools integration option ([78335fa](https://github.com/SimeonC/jira-gitlab-seneschal/commit/78335fa1681367cfcebd070d12ec79f16a961c54)), closes [#23](https://github.com/SimeonC/jira-gitlab-seneschal/issues/23)
+* minor update to config page ([e65a4d5](https://github.com/SimeonC/jira-gitlab-seneschal/commit/e65a4d5e3e5a2305639aacd35f7cd75a8724cd47))
+
+
+### Bug Fixes
+
+* link detection and updating logic ([382fddf](https://github.com/SimeonC/jira-gitlab-seneschal/commit/382fddf590a1708a72686db90a7546f23c32055c)), closes [#21](https://github.com/SimeonC/jira-gitlab-seneschal/issues/21) [#20](https://github.com/SimeonC/jira-gitlab-seneschal/issues/20)
+* missing MR and failed install url ([db7d7a0](https://github.com/SimeonC/jira-gitlab-seneschal/commit/db7d7a08ce9f761152882de0e7fa30387d66a2ea)), closes [#35](https://github.com/SimeonC/jira-gitlab-seneschal/issues/35)
 
 <a name="2.4.2"></a>
 ## [2.4.2](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.4.1...v2.4.2) (2020-01-20)
