@@ -311,7 +311,7 @@ export default async function processWebhookMergeRequest(
       `<details>[^<]+${gitlabJiraLinksHeaderRegexp}[^<]+<\\/details>`,
       'mig'
     );
-    if (newText) {
+    if (newText && newText.match(replacementRegexp)) {
       newMergeRequestDescription = newText.replace(
         replacementRegexp,
         newSummary

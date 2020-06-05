@@ -15,14 +15,18 @@ export function jiraRequest(api, method, url, body) {
       api[method](args, (err, res, body) => {
         if (err) reject(err);
         else {
-          if (!body || res.status === 204) {
+          if (!body || res.statusCode === 204) {
             resolve(true);
             return;
           }
+          let responseFunction = reject;
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            responseFunction = resolve;
+          }
           try {
-            resolve(JSON.parse(body));
+            responseFunction(JSON.parse(body));
           } catch (err) {
-            resolve(body);
+            responseFunction(body);
           }
         }
       });

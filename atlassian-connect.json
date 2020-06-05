@@ -16,7 +16,7 @@
   },
   "apiVersion": 3,
   "lifecycle": {
-    "installed": "installed"
+    "installed": "/installed"
   },
   "scopes": [
     "READ",
