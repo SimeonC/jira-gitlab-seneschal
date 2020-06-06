@@ -40,7 +40,7 @@
     "apollo-link-error": "1.1.12",
     "apollo-link-http": "1.5.16",
     "apollo-link-state": "0.4.2",
-    "apollo-server-express": "2.10.1",
+    "apollo-server-express": "2.14.2",
     "atlassian-connect-express": "4.0.1",
     "autoprefixer": "9.7.4",
     "axios": "0.19.2",
