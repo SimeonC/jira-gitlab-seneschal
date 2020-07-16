@@ -83,7 +83,7 @@
     "graphql-tag": "2.10.3",
     "graphql-tools": "4.0.6",
     "html-webpack-plugin": "2.29.0",
-    "lodash": "4.17.15",
+    "lodash": "4.17.19",
     "map-keys-deep-lodash": "1.2.2",
     "morgan": "1.9.1",
     "nodemon": "1.18.7",
