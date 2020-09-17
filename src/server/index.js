@@ -17,6 +17,7 @@ import { processQueue as processWebhookQueue } from './webhooks/queue';
 import { processQueue as processMigrationQueue } from './transition/migrationQueue';
 import { version } from '../../package.json';
 import { getMigrator, ensureCurrentMetaSchema } from './migrations';
+import logger from './utils/logger';
 
 const reactAdminFile = fs.readFileSync(
   path.join(__dirname, '../../build/client', 'admin.html')
@@ -29,7 +30,7 @@ const reactMrGlanceFile = fs.readFileSync(
 
 const app = express();
 
-const addon = ac(app);
+const addon = ac(app, undefined, logger);
 
 const dbSetupPromise = modelsSetup(addon.schema)
   .then(() => getMigrator(addon.schema, addon))

@@ -53,14 +53,14 @@ class WebhookErrors extends Component<
   { client: * },
   {
     page: number,
-    pages: number,
+    pages: number[],
     isLoading: boolean,
     rows: *[]
   }
 > {
   state = {
     page: 1,
-    pages: 0,
+    pages: [],
     isLoading: true,
     rows: []
   };
@@ -80,9 +80,13 @@ class WebhookErrors extends Component<
         fetchPolicy: 'no-cache'
       })
       .then(({ data = {} }) => {
+        const pages = [];
+        for (let i = 0; i < data.webhookErrors.totalPages; i += 1) {
+          pages.push(i);
+        }
         this.setState({
           isLoading: false,
-          pages: data.webhookErrors.totalPages,
+          pages,
           rows: data.webhookErrors.rows.map(
             ({ id, original, error, createdAt }) => ({
               key: id,
@@ -194,6 +198,7 @@ class WebhookErrors extends Component<
 
   render() {
     const { rows, isLoading, page, pages } = this.state;
+    console.log('[debug]', pages);
     return (
       <Page>
         <GridColumn>
@@ -239,7 +244,12 @@ class WebhookErrors extends Component<
             />
           </div>
           <div>
-            <Pagination onChange={this.loadPage} value={page} total={pages} />
+            <Pagination
+              onChange={this.loadPage}
+              getPageLabel={(page) => page + 1}
+              selectedIndex={page}
+              pages={pages}
+            />
           </div>
         </GridColumn>
       </Page>

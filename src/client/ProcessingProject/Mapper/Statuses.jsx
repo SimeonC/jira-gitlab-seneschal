@@ -232,34 +232,40 @@ class StatusMapping extends Component<StatusPropsType, StateType> {
     }
     return (
       <FormRow>
-        <Field label="Pick GitLab Tag">
-          <Select
-            options={tags.map((tag) => ({ value: tag, label: tag }))}
-            onChange={this.selectTag}
-            defaultValue={{ label: data.gitlabLabel }}
-          />
+        <Field label="Pick GitLab Tag" name="gitlabLabel">
+          {() => (
+            <Select
+              options={tags.map((tag) => ({ value: tag, label: tag }))}
+              onChange={this.selectTag}
+              defaultValue={{ label: data.gitlabLabel }}
+            />
+          )}
         </Field>
-        <Field label="Pick Issue Type">
-          <Select
-            options={jiraData.jiraIssueTypes}
-            getOptionValue={getDefaultOptionValue}
-            getOptionLabel={getIconUrlOptionLabel}
-            onChange={this.selectIssueType}
-            defaultValue={idFind(data.issueTypeId, jiraData.jiraIssueTypes)}
-          />
+        <Field label="Pick Issue Type" name="issueTypeId">
+          {() => (
+            <Select
+              options={jiraData.jiraIssueTypes}
+              getOptionValue={getDefaultOptionValue}
+              getOptionLabel={getIconUrlOptionLabel}
+              onChange={this.selectIssueType}
+              defaultValue={idFind(data.issueTypeId, jiraData.jiraIssueTypes)}
+            />
+          )}
         </Field>
-        <Field label="Pick Status">
-          <Select
-            options={selectedIssueTypeStatuses}
-            getOptionValue={getDefaultOptionValue}
-            getOptionLabel={getStatusOptionLabel}
-            onChange={this.selectIssueStatus}
-            defaultValue={idFind(
-              data.statusId,
-              selectedIssueTypeStatuses,
-              false
-            )}
-          />
+        <Field label="Pick Status" name="statusId">
+          {() => (
+            <Select
+              options={selectedIssueTypeStatuses}
+              getOptionValue={getDefaultOptionValue}
+              getOptionLabel={getStatusOptionLabel}
+              onChange={this.selectIssueStatus}
+              defaultValue={idFind(
+                data.statusId,
+                selectedIssueTypeStatuses,
+                false
+              )}
+            />
+          )}
         </Field>
         {remove && (
           <Button appearance="danger" onClick={this.remove}>

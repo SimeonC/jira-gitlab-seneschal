@@ -7,7 +7,7 @@ import startCase from 'lodash/startCase';
 
 import Page, { Grid, GridColumn } from '@atlaskit/page';
 import DynamicTable from '@atlaskit/dynamic-table';
-import { Status } from '@atlaskit/status';
+import Lozenge from '@atlaskit/lozenge';
 import Button from '@atlaskit/button';
 import BaseSelect from '@atlaskit/select';
 import type { WebhookProjectStatusEnumType } from '../server/apis/webhooks.types';
@@ -42,12 +42,13 @@ const Select = styled(BaseSelect)`
 const statusColor = (status: WebhookProjectStatusEnumType) => {
   switch (status) {
     case 'healthy':
-      return 'green';
+      return 'success';
     case 'sick':
-      return 'red';
+      return 'removed';
     case 'pending':
+      return 'inprogress';
     default:
-      return 'yellow';
+      return 'default';
   }
 };
 
@@ -81,7 +82,7 @@ class Webhooks extends Component<
 
   selectGitlabProject = (option) => {
     this.setState({
-      gitlabProjectId: option.id
+      gitlabProjectId: option.id,
     });
   };
 
@@ -90,11 +91,11 @@ class Webhooks extends Component<
     if (!gitlabProjectId) return;
     createWebhook({
       variables: {
-        gitlabProjectId: `${gitlabProjectId}`
+        gitlabProjectId: `${gitlabProjectId}`,
       },
       update: (store, { data: { createGitlabWebhooks } }) => {
         const cachedData = store.readQuery({
-          query: webhooksQuery
+          query: webhooksQuery,
         });
         const existingHook = cachedData.webhooks.find(
           ({ id }) => id === gitlabProjectId
@@ -111,9 +112,9 @@ class Webhooks extends Component<
         }
         store.writeQuery({
           query: webhooksQuery,
-          data: cachedData
+          data: cachedData,
         });
-      }
+      },
     });
   };
 
@@ -133,14 +134,14 @@ class Webhooks extends Component<
                         key: 'name',
                         content: 'Project Name',
                         isSortable: true,
-                        shouldTruncate: true
+                        shouldTruncate: true,
                       },
                       {
                         key: 'status',
                         content: 'Status',
-                        isSortable: false
-                      }
-                    ]
+                        isSortable: false,
+                      },
+                    ],
                   }}
                   rows={(data.webhooks || []).map((webhook) => ({
                     key: webhook.id,
@@ -151,20 +152,21 @@ class Webhooks extends Component<
                           <a href={webhook.url} target="_blank">
                             {webhook.name}
                           </a>
-                        )
+                        ),
                       },
                       {
                         key: 'status',
                         content: (
                           <div>
-                            <Status
-                              text={startCase(webhook.status)}
-                              color={
+                            <Lozenge
+                              appearance={
                                 webhook.outOfDate
-                                  ? 'yellow'
+                                  ? 'moved'
                                   : statusColor(webhook.status)
                               }
-                            />
+                            >
+                              {startCase(webhook.status)}
+                            </Lozenge>
                             {(true ||
                               webhook.status === 'sick' ||
                               webhook.status === 'pending' ||
@@ -176,9 +178,9 @@ class Webhooks extends Component<
                               </Button>
                             )}
                           </div>
-                        )
-                      }
-                    ]
+                        ),
+                      },
+                    ],
                   }))}
                   isLoading={loading}
                 />

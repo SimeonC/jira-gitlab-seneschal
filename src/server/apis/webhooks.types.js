@@ -36,6 +36,7 @@ export type WebhookProjectStatusEnumType = 'pending' | 'healthy' | 'sick';
 
 export type WebhookProjectStatusType = {
   id: string,
+  outOfDate: boolean,
   name: string,
   url: string,
   status: WebhookProjectStatusEnumType,

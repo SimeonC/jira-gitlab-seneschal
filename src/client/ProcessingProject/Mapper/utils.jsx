@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { Status } from '@atlaskit/status';
+import Lozenge from '@atlaskit/lozenge';
 
 export const FormRow = styled.div`
   display: flex;
@@ -53,7 +53,20 @@ export function getIconUrlOptionLabel(option) {
   );
 }
 export function getStatusOptionLabel(option) {
-  return (
-    <Status text={option.name || ''} color={option.statusCategory.colorName} />
-  );
+  let appearance = 'default';
+  switch (option.statusCategory.colorName) {
+    case 'green':
+      appearance = 'success';
+      break;
+    case 'red':
+      appearance = 'removed';
+      break;
+    case 'yellow':
+      appearance = 'moved';
+      break;
+    case 'blue':
+      appearance = 'inprogress';
+      break;
+  }
+  return <Lozenge appearance={appearance}>{option.name || ''}</Lozenge>;
 }

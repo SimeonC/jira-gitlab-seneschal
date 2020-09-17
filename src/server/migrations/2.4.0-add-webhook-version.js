@@ -1,13 +1,11 @@
-const { DataTypes } = require('sequelize');
-
 module.exports = {
-  up: (queryInterface) => {
-    return queryInterface.addColumn(
-      'WebhookStatuses',
-      'version',
-      DataTypes.STRING,
-      { defaultValue: '0.0.0' }
-    );
+  up: async (queryInterface) => {
+    await queryInterface.sequelize.query(`
+      ALTER TABLE "WebhookStatuses" ADD COLUMN IF NOT EXISTS "version" VARCHAR(255)
+    `);
+    await queryInterface.sequelize.query(`
+      ALTER TABLE "WebhookStatuses" ALTER COLUMN "version" SET DEFAULT '0.0.0'
+    `);
   },
 
   down: (queryInterface) => {

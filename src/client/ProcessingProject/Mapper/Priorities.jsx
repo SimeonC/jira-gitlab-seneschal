@@ -198,21 +198,25 @@ class PriorityMapping extends Component<PriorityPropsType> {
     const { data, tags, jiraData, remove, create } = this.props;
     return (
       <FormRow>
-        <Field label="Pick GitLab Tag">
-          <Select
-            options={tags.map((tag) => ({ value: tag, label: tag }))}
-            onChange={this.selectTag}
-            defaultValue={{ label: data.gitlabLabel }}
-          />
+        <Field label="Pick GitLab Tag" name="gitlabLabel">
+          {() => (
+            <Select
+              options={tags.map((tag) => ({ value: tag, label: tag }))}
+              onChange={this.selectTag}
+              defaultValue={{ label: data.gitlabLabel }}
+            />
+          )}
         </Field>
-        <Field label="Pick Priority">
-          <Select
-            options={jiraData.jiraPriorities}
-            getOptionValue={getDefaultOptionValue}
-            getOptionLabel={getIconUrlOptionLabel}
-            onChange={this.selectPriority}
-            defaultValue={idFind(data.priorityId, jiraData.jiraPriorities)}
-          />
+        <Field label="Pick Priority" name="priorityId">
+          {() => (
+            <Select
+              options={jiraData.jiraPriorities}
+              getOptionValue={getDefaultOptionValue}
+              getOptionLabel={getIconUrlOptionLabel}
+              onChange={this.selectPriority}
+              defaultValue={idFind(data.priorityId, jiraData.jiraPriorities)}
+            />
+          )}
         </Field>
         {remove && (
           <Button appearance="danger" onClick={this.remove}>

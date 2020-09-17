@@ -1,6 +1,6 @@
 import fs from 'fs-extra';
 import path from 'path';
-import expressGraphql from 'express-graphql';
+import { graphqlHTTP } from 'express-graphql';
 import { makeExecutableSchema } from 'graphql-tools';
 import root from './rootResolver';
 import rootSchema from './schema.graphql';
@@ -29,7 +29,7 @@ const modelSchemaFileNames = fs
 export default function initGraphQL(addon) {
   let resolvers = root(addon);
   resolvers = projectMappingApi(addon, resolvers);
-  return expressGraphql({
+  return graphqlHTTP({
     schema: makeExecutableSchema({
       typeDefs: schemas.concat(
         modelSchemaFileNames.map((fileName) => require(`./models/${fileName}`))

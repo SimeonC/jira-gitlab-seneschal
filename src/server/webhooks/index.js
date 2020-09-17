@@ -55,7 +55,7 @@ export async function createWebhooks(
   };
 
   const existingWebhook = currentProjectWebhooks.find(
-    ({ url }) => url === webhookUrl
+    ({ url }) => url.indexOf(`/${key}`) >= 0
   );
   if (existingWebhook) {
     await gitlab.ProjectHooks.edit(
@@ -75,7 +75,7 @@ export async function createWebhooks(
     database,
     gitlabProjectId,
     name_with_namespace,
-    `${web_url}/settings/integrations`
+    web_url
   );
   await setWebhookClientKey(database, key, secretKey, clientKey);
 

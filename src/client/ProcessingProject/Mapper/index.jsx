@@ -112,14 +112,16 @@ class JiraProjectSelector extends Component<
   render() {
     return (
       <Fragment>
-        <Field label="Select Jira Project to map to">
-          <Select
-            options={this.props.projects}
-            getOptionValue={getDefaultOptionValue}
-            getOptionLabel={getProjectOptionLabel}
-            onChange={this.selectJiraProject}
-            defaultValue={this.state.defaultValue}
-          />
+        <Field label="Select Jira Project to map to" name="jiraProjectId">
+          {() => (
+            <Select
+              options={this.props.projects}
+              getOptionValue={getDefaultOptionValue}
+              getOptionLabel={getProjectOptionLabel}
+              onChange={this.selectJiraProject}
+              defaultValue={this.state.defaultValue}
+            />
+          )}
         </Field>
         {!this.state.jiraProjectId
           ? null
@@ -160,30 +162,55 @@ class MappingEditor extends Component<{
     const { projectId, data, labels, jiraData, update } = this.props;
     return (
       <Form name="mapping">
-        <Field label="Select default components to apply to all issues">
-          <Select
-            options={jiraData.jiraComponents}
-            isMulti
-            getOptionValue={getDefaultOptionValue}
-            getOptionLabel={getComponentOptionLabel}
-            onChange={this.selectDefaultComponents}
-            defaultValue={(data.defaultComponentIds || []).map((id) =>
-              idFind(id, jiraData.jiraComponents)
-            )}
-          />
-        </Field>
-        <DefaultIssue jiraData={jiraData} data={data} update={update} />
-        <IssueTypes projectId={projectId} jiraData={jiraData} labels={labels} />
-        <Statuses projectId={projectId} jiraData={jiraData} labels={labels} />
-        <Components projectId={projectId} jiraData={jiraData} labels={labels} />
-        <Priorities projectId={projectId} jiraData={jiraData} labels={labels} />
-        <h4>Debug Details</h4>
-        <ReactJson
-          src={sanitizeData(data)}
-          onEdit={this.update}
-          onAdd={this.update}
-          onDelete={this.update}
-        />
+        {({ formProps }) => (
+          <form {...formProps}>
+            <Field
+              label="Select default components to apply to all issues"
+              name="defaultComponentids"
+            >
+              {() => (
+                <Select
+                  options={jiraData.jiraComponents}
+                  isMulti
+                  getOptionValue={getDefaultOptionValue}
+                  getOptionLabel={getComponentOptionLabel}
+                  onChange={this.selectDefaultComponents}
+                  defaultValue={(data.defaultComponentIds || []).map((id) =>
+                    idFind(id, jiraData.jiraComponents)
+                  )}
+                />
+              )}
+            </Field>
+            <DefaultIssue jiraData={jiraData} data={data} update={update} />
+            <IssueTypes
+              projectId={projectId}
+              jiraData={jiraData}
+              labels={labels}
+            />
+            <Statuses
+              projectId={projectId}
+              jiraData={jiraData}
+              labels={labels}
+            />
+            <Components
+              projectId={projectId}
+              jiraData={jiraData}
+              labels={labels}
+            />
+            <Priorities
+              projectId={projectId}
+              jiraData={jiraData}
+              labels={labels}
+            />
+            <h4>Debug Details</h4>
+            <ReactJson
+              src={sanitizeData(data)}
+              onEdit={this.update}
+              onAdd={this.update}
+              onDelete={this.update}
+            />
+          </form>
+        )}
       </Form>
     );
   }

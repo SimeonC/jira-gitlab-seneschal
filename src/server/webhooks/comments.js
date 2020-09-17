@@ -27,9 +27,7 @@ export default async function processWebhookComment(
       metadata.projectId,
       metadata.mergeRequestId,
       id,
-      {
-        body: newText
-      }
+      newText
     );
   }
   // $FlowFixMe Async Promise/Object type conflict

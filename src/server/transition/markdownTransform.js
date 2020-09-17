@@ -1,5 +1,5 @@
 // @flow
-import GitlabApi from 'gitlab';
+import GitlabApi from '@gitbeaker/node';
 import repeat from 'lodash/repeat';
 
 function transformByRegex(

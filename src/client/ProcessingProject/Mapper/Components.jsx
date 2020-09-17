@@ -198,21 +198,25 @@ class ComponentMapping extends Component<ComponentPropsType> {
     const { data, tags, jiraData, remove, create } = this.props;
     return (
       <FormRow>
-        <Field label="Pick GitLab Tag">
-          <Select
-            options={tags.map((tag) => ({ value: tag, label: tag }))}
-            onChange={this.selectTag}
-            defaultValue={{ label: data.gitlabLabel }}
-          />
+        <Field label="Pick GitLab Tag" name="gitlabLabel">
+          {() => (
+            <Select
+              options={tags.map((tag) => ({ value: tag, label: tag }))}
+              onChange={this.selectTag}
+              defaultValue={{ label: data.gitlabLabel }}
+            />
+          )}
         </Field>
-        <Field label="Pick Component">
-          <Select
-            options={jiraData.jiraComponents}
-            getOptionValue={getDefaultOptionValue}
-            getOptionLabel={getComponentOptionLabel}
-            onChange={this.selectComponent}
-            defaultValue={idFind(data.componentId, jiraData.jiraComponents)}
-          />
+        <Field label="Pick Component" name="jiraComponents">
+          {() => (
+            <Select
+              options={jiraData.jiraComponents}
+              getOptionValue={getDefaultOptionValue}
+              getOptionLabel={getComponentOptionLabel}
+              onChange={this.selectComponent}
+              defaultValue={idFind(data.componentId, jiraData.jiraComponents)}
+            />
+          )}
         </Field>
         {remove && (
           <Button appearance="danger" onClick={this.remove}>

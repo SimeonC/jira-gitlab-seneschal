@@ -1,4 +1,4 @@
-const GitlabApi = require('gitlab').default;
+const GitlabApi = require('@gitbeaker/node').default;
 const inquirer = require('inquirer');
 const progress = require('progress');
 const chalk = require('chalk');

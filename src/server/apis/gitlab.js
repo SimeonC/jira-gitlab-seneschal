@@ -1,5 +1,5 @@
 // @flow
-import { Gitlab } from 'gitlab';
+import { Gitlab } from '@gitbeaker/node';
 import { getCredential } from './credentials';
 import type { GitlabCredential } from './credentials';
 

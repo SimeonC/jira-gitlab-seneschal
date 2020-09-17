@@ -84,42 +84,51 @@ export default class DefaultIssue extends Component<PropsType, StateType> {
     return (
       <FormSection name="defaults">
         <MinWidthFieldWrapper>
-          <Field label="Pick default Issue Type">
-            <Select
-              options={jiraData.jiraIssueTypes}
-              getOptionValue={getDefaultOptionValue}
-              getOptionLabel={getIconUrlOptionLabel}
-              onChange={this.selectDefaultIssueType}
-              defaultValue={idFind(
-                data.defaultIssueTypeId,
-                jiraData.jiraIssueTypes
-              )}
-            />
+          <Field label="Pick default Issue Type" name="defaultIssueTypeId">
+            {() => (
+              <Select
+                options={jiraData.jiraIssueTypes}
+                getOptionValue={getDefaultOptionValue}
+                getOptionLabel={getIconUrlOptionLabel}
+                onChange={this.selectDefaultIssueType}
+                defaultValue={idFind(
+                  data.defaultIssueTypeId,
+                  jiraData.jiraIssueTypes
+                )}
+              />
+            )}
           </Field>
-          <Field label="Pick Closed Status">
-            <Select
-              options={selectedIssueTypeStatuses}
-              getOptionValue={getDefaultOptionValue}
-              getOptionLabel={getStatusOptionLabel}
-              onChange={this.selectClosedStatus}
-              defaultValue={idFind(
-                data.defaultIssueTypeClosedStatusId,
-                selectedIssueTypeStatuses,
-                false
-              )}
-            />
+          <Field
+            label="Pick Closed Status"
+            name="defaultIssueTypeClosedStatusId"
+          >
+            {() => (
+              <Select
+                options={selectedIssueTypeStatuses}
+                getOptionValue={getDefaultOptionValue}
+                getOptionLabel={getStatusOptionLabel}
+                onChange={this.selectClosedStatus}
+                defaultValue={idFind(
+                  data.defaultIssueTypeClosedStatusId,
+                  selectedIssueTypeStatuses,
+                  false
+                )}
+              />
+            )}
           </Field>
-          <Field label="Pick Default Resolution">
-            <Select
-              options={jiraData.jiraResolutions}
-              getOptionValue={getDefaultOptionValue}
-              getOptionLabel={getIconUrlOptionLabel}
-              onChange={this.selectResolution}
-              defaultValue={idFind(
-                data.defaultResolutionId,
-                jiraData.jiraResolutions
-              )}
-            />
+          <Field label="Pick Default Resolution" name="defaultResolutionId">
+            {() => (
+              <Select
+                options={jiraData.jiraResolutions}
+                getOptionValue={getDefaultOptionValue}
+                getOptionLabel={getIconUrlOptionLabel}
+                onChange={this.selectResolution}
+                defaultValue={idFind(
+                  data.defaultResolutionId,
+                  jiraData.jiraResolutions
+                )}
+              />
+            )}
           </Field>
         </MinWidthFieldWrapper>
       </FormSection>

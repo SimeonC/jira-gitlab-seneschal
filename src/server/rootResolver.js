@@ -545,7 +545,7 @@ export default function(addon: *) {
     return createWebhooks(
       addon,
       gitlabProjectId,
-      req.protocol + '://' + req.get('host'),
+      process.env.APP_URL || req.protocol + '://' + req.get('host'),
       req.context.clientKey
     );
   }

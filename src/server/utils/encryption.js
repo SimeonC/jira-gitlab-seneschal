@@ -9,7 +9,7 @@ export function encrypt(text: string, encryptionKey: string): string {
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(
     algorithm,
-    new Buffer(encryptionKey),
+    Buffer.from(encryptionKey),
     iv
   );
   // $FlowFixMe
@@ -22,11 +22,11 @@ export function encrypt(text: string, encryptionKey: string): string {
 
 export function decrypt(text: string, encryptionKey: string): string {
   const textParts = text.split(':');
-  const iv = new Buffer(textParts.shift(), 'hex');
-  const encryptedText = new Buffer(textParts.join(':'), 'hex');
+  const iv = Buffer.from(textParts.shift(), 'hex');
+  const encryptedText = Buffer.from(textParts.join(':'), 'hex');
   const decipher = crypto.createDecipheriv(
     'aes-256-cbc',
-    new Buffer(encryptionKey),
+    Buffer.from(encryptionKey),
     iv
   );
   let decrypted = decipher.update(encryptedText);

@@ -32,12 +32,17 @@ export default [
       defaultValue: version
     },
     outOfDate: {
-      type: DataTypes.VIRTUAL,
+      type: new DataTypes.VIRTUAL(DataTypes.BOOLEAN, ['version']),
       get() {
-        const hookVersion = this.getDataValue('version');
-        return (
-          !hookVersion || semver.lt(hookVersion, `${currentMinorVersion}.0`)
-        );
+        try {
+          const hookVersion = this.get('version');
+          return (
+            !hookVersion || semver.lt(hookVersion, `${currentMinorVersion}.0`)
+          );
+        } catch (e) {
+          console.error(e);
+          return true;
+        }
       }
     }
   }

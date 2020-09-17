@@ -53,3 +53,8 @@ To release you first need to setup `conventional-github-releaser` by following t
 Then simply run `npm run release` which will automatically tag, update the changelog and create the github release file.
 
 To ensure this system works all commits must follow the [Angular commit conventions](https://github.com/bcoe/conventional-changelog-standard/blob/master/convention.md)
+
+### Weird bugs
+
+* When upgrading dependencies watch out for the version of sequelize as set in atlassian-express-connect.
+The versions must match or certain checks like `instanceof` will fail.  
