@@ -5,6 +5,7 @@ type WebhookTransitions {
 }
 
 type WebhookTransitionMap {
+  jiraProjectId: String!
   jiraProjectKey: String!
   openStatusIds: [String!]!
   mergeStatusIds: [String!]!

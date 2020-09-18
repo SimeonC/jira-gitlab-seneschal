@@ -121,12 +121,13 @@ type Mutations {
     mergeStatusIds: [String!]
   ): SuccessResponse
   upsertWebhookTransitionMap(
+    jiraProjectId: String!
     jiraProjectKey: String!
     openStatusIds: [String!]
     closeStatusIds: [String!]
     mergeStatusIds: [String!]
   ): SuccessResponse
-  deleteWebhookTransitionMap(jiraProjectKey: String!): SuccessResponse
+  deleteWebhookTransitionMap(jiraProjectId: String!): SuccessResponse
   createGitlabWebhooks(gitlabProjectId: String!): WebhookStatus
   processProject(gitlabProjectId: String): SuccessResponse
   clearMigrationProject(gitlabProjectId: String): SuccessResponse

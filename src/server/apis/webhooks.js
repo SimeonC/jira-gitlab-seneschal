@@ -70,15 +70,15 @@ export async function getWebhookMetadata(
   return transitionMetadata;
 }
 
-function parseProjectProps({ url, ...props }) {
+export function parseProjectProps({ url, ...props }) {
   let parsedUrl = url;
-  if (url && !url.match(/\/hooks$/ig)) {
-    parsedUrl = `${url.replace(/\/$/ig, '')}/hooks`;
+  if (url && !url.match(/\/hooks$/gi)) {
+    parsedUrl = `${url.replace(/\/$/gi, '')}/hooks`;
   }
   return {
     ...props,
     url: parsedUrl
-  }
+  };
 }
 
 export async function registerProject(
@@ -100,10 +100,12 @@ export async function upsertProject(
   projectId: string,
   props: { name: string, url: string, status: WebhookProjectStatusEnumType }
 ): boolean {
-  await database.WebhookStatuses.upsert(parseProjectProps({
-    ...props,
-    id: `${projectId}`
-  }));
+  await database.WebhookStatuses.upsert(
+    parseProjectProps({
+      ...props,
+      id: `${projectId}`
+    })
+  );
   // $FlowFixMe
   return true;
 }
@@ -124,7 +126,7 @@ export async function updateProject(
 
 export async function allProjects(
   database: DatabaseType
-): WebhookProjectStatusType[] {
+): Promise<WebhookProjectStatusType[]> {
   // $FlowFixMe
   try {
     return await database.WebhookStatuses.findAll();

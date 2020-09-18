@@ -11,13 +11,14 @@ import http from 'http';
 import os from 'os';
 import path from 'path';
 import initGraphQL from './initGraphQL';
-import webhooksSetup from './webhooks';
+import webhooksSetup, { checkExistingWebhooks } from './webhooks';
 import modelsSetup from './models';
 import { processQueue as processWebhookQueue } from './webhooks/queue';
 import { processQueue as processMigrationQueue } from './transition/migrationQueue';
 import { version } from '../../package.json';
 import { getMigrator, ensureCurrentMetaSchema } from './migrations';
 import logger from './utils/logger';
+import getAppUrl from './utils/getAppUrl';
 
 const reactAdminFile = fs.readFileSync(
   path.join(__dirname, '../../build/client', 'admin.html')
@@ -31,6 +32,9 @@ const reactMrGlanceFile = fs.readFileSync(
 const app = express();
 
 const addon = ac(app, undefined, logger);
+
+const port = addon.config.port();
+process.env.PORT = port;
 
 const dbSetupPromise = modelsSetup(addon.schema)
   .then(() => getMigrator(addon.schema, addon))
@@ -47,15 +51,12 @@ const dbSetupPromise = modelsSetup(addon.schema)
         return migrator.up({});
       })
   );
-
-const port = addon.config.port();
 const devEnv = app.get('env') === 'development';
 if (devEnv) {
   process.env.NODE_ENV = 'development';
 } else {
   process.env.NODE_ENV = 'production';
 }
-
 app.use(morgan(devEnv ? 'dev' : 'combined'));
 // Include request parsers
 app.use(bodyParser.json());
@@ -139,13 +140,40 @@ if (devEnv) {
     serveFrontendRequest(mrGlanceContent)
   );
 }
-
 // Show nicer errors when in dev mode
 if (devEnv) {
   app.use(errorHandler());
 }
 
 app.use('/graphql', addon.checkValidToken(), initGraphQL(addon));
+
+app.post('/jira-project-updated', async (req, res) => {
+  res.status(200);
+  res.send('ok');
+  const {
+    project: { id, key }
+  } = req.body;
+
+  const currentProject = await addon.schema.models.WebhookTransitionMaps.findOne(
+    {
+      where: {
+        jiraProjectId: `${id}`
+      }
+    }
+  );
+  if (currentProject.jiraProjectKey !== key) {
+    await addon.schema.models.WebhookTransitionMaps.update(
+      {
+        jiraProjectKey: key
+      },
+      {
+        where: {
+          jiraProjectId: `${id}`
+        }
+      }
+    );
+  }
+});
 
 webhooksSetup(addon, app);
 
@@ -154,12 +182,12 @@ webhooksSetup(addon, app);
 app.get('/', (req, res) => {
   res.format({
     // If the request content-type is text-html, it will decide which to serve up
-    'text/html': function() {
+    'text/html': function () {
       res.redirect('/atlassian-connect.json');
     },
     // This logic is here to make sure that the `atlassian-connect.json` is always
     // served up when requested by the host
-    'application/json': function() {
+    'application/json': function () {
       res.redirect('/atlassian-connect.json');
     }
   });
@@ -186,12 +214,12 @@ dbSetupPromise
       processWebhookQueue(addon);
       processMigrationQueue(addon);
     }, 60000);
-    http.createServer(app).listen(port, function() {
-      console.log(
-        'Add-on server running at http://' + os.hostname() + ':' + port
-      );
+    http.createServer(app).listen(port, function () {
+      console.log(`Add-on server running at ${getAppUrl()}`);
       // Enables auto registration/de-registration of add-ons into a host in dev mode
-      if (devEnv) addon.register();
+      let finalPromise = Promise.resolve();
+      if (devEnv) finalPromise = addon.register();
+      finalPromise.then(() => checkExistingWebhooks(addon));
     });
   })
   .catch((error) => console.error(error));

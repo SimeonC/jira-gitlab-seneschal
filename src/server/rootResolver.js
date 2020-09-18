@@ -75,7 +75,7 @@ async function testGitlabCredentials(database: DatabaseType, jiraAddon: *) {
   }
 }
 
-export default function(addon: *) {
+export default function (addon: *) {
   const database = addon.schema.models;
   loadGitlabProjectProcess.send({
     init: true,
@@ -504,6 +504,7 @@ export default function(addon: *) {
   async function upsertWebhookTransitionMap(
     root: *,
     {
+      jiraProjectId,
       jiraProjectKey,
       openStatusIds = [],
       closeStatusIds = [],
@@ -513,6 +514,7 @@ export default function(addon: *) {
   ): SuccessResponseType {
     await addon.schema.models.WebhookTransitionMaps.upsert({
       clientKey: req.context.clientKey,
+      jiraProjectId,
       jiraProjectKey,
       openStatusIds,
       closeStatusIds,
@@ -523,14 +525,14 @@ export default function(addon: *) {
 
   async function deleteWebhookTransitionMap(
     root: *,
-    { jiraProjectKey }: { jiraProjectKey: string },
+    { jiraProjectId }: { jiraProjectId: string },
     req: *
   ): SuccessResponseType {
     const deletedCount = await addon.schema.models.WebhookTransitionMaps.destroy(
       {
         where: {
           clientKey: req.context.clientKey,
-          jiraProjectKey
+          jiraProjectId
         }
       }
     );
@@ -542,12 +544,7 @@ export default function(addon: *) {
     { gitlabProjectId }: { gitlabProjectId: string },
     req: *
   ): WebhookProjectStatusType {
-    return createWebhooks(
-      addon,
-      gitlabProjectId,
-      process.env.APP_URL || req.protocol + '://' + req.get('host'),
-      req.context.clientKey
-    );
+    return createWebhooks(addon, gitlabProjectId, req.context.clientKey);
   }
 
   async function webhooks(): WebhookProjectStatusType[] {

@@ -163,6 +163,12 @@
           }
         ]
       }
+    ],
+    "webhooks": [
+      {
+        "event": "project_updated",
+        "url": "/jira-project-updated"
+      }
     ]
   },
   "apiMigrations": {

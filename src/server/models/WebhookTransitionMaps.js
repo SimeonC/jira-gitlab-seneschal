@@ -2,10 +2,14 @@ import { DataTypes } from 'sequelize';
 
 export default [
   {
-    jiraProjectKey: {
-      type: DataTypes.STRING,
+    jiraProjectId: {
+      type: DataTypes.NUMBER,
       allowNull: false,
       primaryKey: true
+    },
+    jiraProjectKey: {
+      type: DataTypes.STRING,
+      allowNull: false
     },
     openStatusIds: {
       type: DataTypes.ARRAY(DataTypes.STRING),

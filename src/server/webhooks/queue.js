@@ -59,8 +59,15 @@ async function processElement(
   const { baseUrl } = await jiraAddon.settings.get('clientInfo', clientKey);
   const jiraApi = jiraAddon.httpClient({ clientKey });
 
-  const jiraProjects = await jiraRequest(jiraApi, 'get', '/project');
-  const jiraProjectKeys = jiraProjects.map(({ key }) => key);
+  const jiraProjects = await jiraRequest(
+    jiraApi,
+    'get',
+    '/project?expand=projectKeys'
+  );
+  const jiraProjectKeys = jiraProjects.reduce(
+    (keys, { projectKeys }) => keys.concat(projectKeys),
+    []
+  );
 
   let processMetadata: ?WebhookProcessResponseType;
   switch (queueElement.body.object_kind) {

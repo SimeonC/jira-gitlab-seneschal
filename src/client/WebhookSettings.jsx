@@ -27,6 +27,7 @@ const MetadataQuery = gql`
     getWebhookMetadata {
       transitionKeywords
       transitionMap {
+        jiraProjectId
         jiraProjectKey
         mergeStatusIds
         openStatusIds
@@ -115,6 +116,7 @@ class WebhookSettings extends Component<
   },
   {
     transitionKeywords?: string[],
+    jiraProjectId?: string,
     jiraProjectKey?: string,
     newOpenStatuses?: StatusType[],
     newMergeStatuses?: StatusType[],
@@ -128,7 +130,8 @@ class WebhookSettings extends Component<
 
   selectJiraProject = (option) => {
     this.setState({
-      jiraProjectKey: option.key
+      jiraProjectKey: option.key,
+      jiraProjectId: option.id
     });
   };
 
@@ -178,14 +181,16 @@ class WebhookSettings extends Component<
 
   createTransition = () => {
     const {
+      jiraProjectId,
       jiraProjectKey,
       newOpenStatuses = [],
       newMergeStatuses = [],
       newCloseStatuses = []
     } = this.state;
     const { upsertTransition } = this.props;
-    if (!jiraProjectKey) return;
+    if (!jiraProjectId) return;
     const newTransition = {
+      jiraProjectId,
       jiraProjectKey,
       mergeStatusIds: newMergeStatuses.map(({ id }) => id),
       openStatusIds: newOpenStatuses.map(({ id }) => id),
@@ -242,7 +247,7 @@ class WebhookSettings extends Component<
     });
     projects.forEach((project) => {
       const map = transitionMap.find(
-        ({ jiraProjectKey }) => project.key === jiraProjectKey
+        ({ jiraProjectId }) => project.id === jiraProjectId
       );
       if (!map) {
         availableProjects.push(project);
@@ -328,7 +333,7 @@ class WebhookSettings extends Component<
                   <Button
                     type="submit"
                     appearance="primary"
-                    disabled={isSaving || !this.state.jiraProjectKey}
+                    disabled={isSaving || !this.state.jiraProjectId}
                     isLoading={isSaving}
                   >
                     Set Default Transition Map
@@ -365,17 +370,15 @@ class WebhookSettings extends Component<
             ))}
             {transitionMap.map((transitionMap) => (
               <Mutation
-                key={transitionMap.jiraProjectKey}
+                key={transitionMap.jiraProjectId}
                 mutation={gql`
-                  mutation DeleteTransitionMap($jiraProjectKey: String!) {
-                    deleteWebhookTransitionMap(
-                      jiraProjectKey: $jiraProjectKey
-                    ) {
+                  mutation DeleteTransitionMap($jiraProjectId: String!) {
+                    deleteWebhookTransitionMap(jiraProjectId: $jiraProjectId) {
                       success
                     }
                   }
                 `}
-                variables={{ jiraProjectKey: transitionMap.jiraProjectKey }}
+                variables={{ jiraProjectId: transitionMap.jiraProjectId }}
                 refetchQueries={['WebhookMetadata']}
               >
                 {(deleteTransitionMap, { loading: isDeletingTransition }) => (
@@ -491,7 +494,7 @@ class WebhookSettings extends Component<
                   <Button
                     type="submit"
                     appearance="primary"
-                    disabled={isSaving || !this.state.jiraProjectKey}
+                    disabled={isSaving || !this.state.jiraProjectId}
                     isLoading={isSaving}
                   >
                     Create New Transition Map
@@ -529,11 +532,13 @@ export default () => (
           mutation={gql`
             mutation UpsertTransition(
               $jiraProjectKey: String!
+              $jiraProjectId: String!
               $openStatusIds: [String!]!
               $mergeStatusIds: [String!]!
               $closeStatusIds: [String!]!
             ) {
               upsertWebhookTransitionMap(
+                jiraProjectId: $jiraProjectId
                 jiraProjectKey: $jiraProjectKey
                 openStatusIds: $openStatusIds
                 closeStatusIds: $closeStatusIds
