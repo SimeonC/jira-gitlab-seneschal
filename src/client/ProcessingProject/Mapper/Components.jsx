@@ -1,10 +1,10 @@
 // @flow
 import React, { Component } from 'react';
-import { Query, Mutation } from 'react-apollo';
-import gql from 'graphql-tag';
+import { Query, Mutation } from '@apollo/client/react/components';
+import { gql } from '@apollo/client';
 import Select from '@atlaskit/select/dist/esm/Select';
 import { Field, FormSection } from '@atlaskit/form';
-import Button from '@atlaskit/button';
+import Button from '@atlaskit/button/loading-button';
 import Spinner from '@atlaskit/spinner';
 
 import {

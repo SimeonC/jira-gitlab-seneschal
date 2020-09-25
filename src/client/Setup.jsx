@@ -1,7 +1,7 @@
 import React from 'react';
-import { useMutation, useQuery } from 'react-apollo';
+import { useMutation, useQuery } from '@apollo/client';
 import startCase from 'lodash/startCase';
-import gql from 'graphql-tag';
+import { gql } from '@apollo/client';
 import Tabs from '@atlaskit/tabs';
 import { ToggleStateless } from '@atlaskit/toggle';
 import Spinner from '@atlaskit/spinner';

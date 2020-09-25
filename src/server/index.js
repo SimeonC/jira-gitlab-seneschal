@@ -7,11 +7,13 @@ import errorHandler from 'errorhandler';
 import morgan from 'morgan';
 import fs from 'fs-extra';
 import ac from 'atlassian-connect-express';
+import helmet from 'helmet';
+import nocache from 'nocache';
 import http from 'http';
 import os from 'os';
 import path from 'path';
 import initGraphQL from './initGraphQL';
-import webhooksSetup, { checkExistingWebhooks } from './webhooks';
+import webhooksSetup, { runWebhookChecks } from './webhooks';
 import modelsSetup from './models';
 import { processQueue as processWebhookQueue } from './webhooks/queue';
 import { processQueue as processMigrationQueue } from './transition/migrationQueue';
@@ -19,13 +21,7 @@ import { version } from '../../package.json';
 import { getMigrator, ensureCurrentMetaSchema } from './migrations';
 import logger from './utils/logger';
 import getAppUrl from './utils/getAppUrl';
-
-const reactAdminFile = fs.readFileSync(
-  path.join(__dirname, '../../build/client', 'admin.html')
-);
-const reactMrGlanceFile = fs.readFileSync(
-  path.join(__dirname, '../../build/client', 'mrGlance.html')
-);
+import { frontendPages } from '../frontendPages';
 
 // Password Must be 256 bytes (32 characters)
 
@@ -57,6 +53,22 @@ if (devEnv) {
 } else {
   process.env.NODE_ENV = 'production';
 }
+
+// Atlassian security policy requirements
+// http://go.atlassian.com/security-requirements-for-cloud-apps
+// HSTS must be enabled with a minimum age of at least one year
+app.use(
+  helmet.hsts({
+    maxAge: 31536000,
+    includeSubDomains: false
+  })
+);
+app.use(
+  helmet.referrerPolicy({
+    policy: ['origin']
+  })
+);
+
 app.use(morgan(devEnv ? 'dev' : 'combined'));
 // Include request parsers
 app.use(bodyParser.json());
@@ -100,22 +112,14 @@ if (devEnv) {
     publicPath: '/admin'
   });
 
-  app.get('/admin', addon.authenticate(), (req, res) => {
-    const htmlFile = devMiddleware.fileSystem.readFileSync(
-      config.output.path + '/admin.html'
-    );
-    sendFrontendPage(req, res, htmlFile.toString());
-  });
-  app.get(
-    '/gitlab-seneschal-merge-requests',
-    addon.authenticate(),
-    (req, res) => {
+  frontendPages.forEach((page) => {
+    app.get(`/${page}`, addon.authenticate(), (req, res) => {
       const htmlFile = devMiddleware.fileSystem.readFileSync(
-        config.output.path + '/mrGlance.html'
+        `${config.output.path}/${page}.html`
       );
       sendFrontendPage(req, res, htmlFile.toString());
-    }
-  );
+    });
+  });
 
   app.use(express.static(path.join(__dirname, '../../public')));
   app.use(devMiddleware);
@@ -124,22 +128,27 @@ if (devEnv) {
   // Enable static resource fingerprinting for far future expires caching in production
   app.use(express.static(path.join(__dirname, '../../build/client')));
 
-  const adminContent = reactAdminFile.toString();
-  const mrGlanceContent = reactMrGlanceFile.toString();
-
   function serveFrontendRequest(content) {
     return (req, res) => {
       sendFrontendPage(req, res, content);
     };
   }
 
-  app.get('/admin', addon.authenticate(), serveFrontendRequest(adminContent));
-  app.get(
-    '/gitlab-seneschal-merge-requests',
-    addon.authenticate(),
-    serveFrontendRequest(mrGlanceContent)
-  );
+  frontendPages.forEach((page) => {
+    const fileContent = fs.readFileSync(
+      path.join(__dirname, '../../build/client', `${page}.html`)
+    );
+    app.get(
+      `/${page}`,
+      addon.authenticate(),
+      serveFrontendRequest(fileContent)
+    );
+  });
 }
+// Atlassian security policy requirements
+// http://go.atlassian.com/security-requirements-for-cloud-apps
+app.use(nocache());
+
 // Show nicer errors when in dev mode
 if (devEnv) {
   app.use(errorHandler());
@@ -219,7 +228,7 @@ dbSetupPromise
       // Enables auto registration/de-registration of add-ons into a host in dev mode
       let finalPromise = Promise.resolve();
       if (devEnv) finalPromise = addon.register();
-      finalPromise.then(() => checkExistingWebhooks(addon));
+      finalPromise.then(() => runWebhookChecks(addon));
     });
   })
   .catch((error) => console.error(error));

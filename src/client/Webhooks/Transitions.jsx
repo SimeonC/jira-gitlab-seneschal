@@ -1,22 +1,23 @@
 // @flow
-import React, { Component } from 'react';
-import { Query, Mutation } from 'react-apollo';
-import gql from 'graphql-tag';
-import styled from 'styled-components';
+import React, { Component, Fragment } from 'react';
+import { Query, Mutation } from '@apollo/client/react/components';
+import { gql } from '@apollo/client';
+import styled from '@emotion/styled';
 import Composer from 'react-composer';
 
 import Form, {
   Field,
   FormHeader,
   FormSection,
-  FormFooter
+  FormFooter,
+  HelperMessage
 } from '@atlaskit/form';
 import TextField from '@atlaskit/textfield';
-import Button from '@atlaskit/button';
-import Lozenge from '@atlaskit/lozenge';
+import Button from '@atlaskit/button/loading-button';
 import Spinner from '@atlaskit/spinner';
 import Select from '@atlaskit/select';
-import sanitizeData from './sanitizeData';
+import { buildMeta, Status, statusSelectOptions } from './utils';
+import sanitizeData from '../sanitizeData';
 
 type StatusType = {
   id: string
@@ -65,47 +66,10 @@ const StatusTableCell = styled.td`
   }
 `;
 
-function buildMeta(map, name, statuses) {
-  map.__meta = map.__meta || {};
-  map.__meta.name = name;
-  ['open', 'close', 'merge'].forEach((statusKey) => {
-    map.__meta[`${statusKey}Statuses`] = [];
-    const idKey = `${statusKey}StatusIds`;
-    if (map[idKey]) {
-      map[idKey].forEach((statusId) => {
-        const status = statuses.find(({ id }) => statusId === id);
-        if (status) {
-          map.__meta[`${statusKey}Statuses`].push({
-            name: status.name,
-            color: status.statusCategory.colorName
-          });
-        }
-      });
-    }
-  });
-}
-
-const Status = ({ text, color }) => {
-  const appearanceMap = {
-    neutral: 'default',
-    purple: 'new',
-    blue: 'inprogress',
-    red: 'removed',
-    yellow: 'moved',
-    green: 'success'
-  };
-  return <Lozenge appearance={appearanceMap[color]}>{text}</Lozenge>;
-};
-
 const getProjectOptionValue = (option) => option.key;
 const getProjectOptionLabel = (option) => `${option.key} - ${option.name}`;
 
-const getStatusOptionValue = (option) => option.id;
-const getStatusOptionLabel = (option) => (
-  <Status text={option.name || ''} color={option.statusCategory.colorName} />
-);
-
-class WebhookSettings extends Component<
+class Transitions extends Component<
   {
     saveMetadata: any,
     upsertTransition: any,
@@ -230,101 +194,128 @@ class WebhookSettings extends Component<
 
   render() {
     const { data, jiraData, isSaving } = this.props;
-    const projects = jiraData.jiraProjects;
+    const {
+      newDefaultOpenStatuses,
+      newDefaultMergeStatuses,
+      newDefaultCloseStatuses
+    } = this.state;
     const statuses = jiraData.jiraStatuses;
     const {
-      transitionMap,
-      defaultTransitionMap,
+      defaultTransitionMap: rawDefaultTransitionMap,
       transitionKeywords
     } = data.getWebhookMetadata;
+    const transitionMap = [...data.getWebhookMetadata.transitionMap];
     const availableProjects = [];
     // There should only be one of these but it returns an array
-    defaultTransitionMap.forEach((transitionMap, index) => {
-      transitionMap.__meta = {
-        id: index
-      };
-      buildMeta(transitionMap, `Fallback Transitions`, statuses);
-    });
-    projects.forEach((project) => {
+    const defaultTransitionMap = rawDefaultTransitionMap.map(
+      (transitionMap, index) =>
+        buildMeta(
+          { ...transitionMap, __meta: { id: index } },
+          `Default Transitions`,
+          statuses
+        )
+    );
+    jiraData.jiraProjects.forEach((project) => {
       const map = transitionMap.find(
         ({ jiraProjectId }) => project.id === jiraProjectId
       );
       if (!map) {
         availableProjects.push(project);
       } else {
-        buildMeta(map, project.name, statuses);
+        transitionMap[transitionMap.indexOf(map)] = buildMeta(
+          map,
+          project.name,
+          statuses
+        );
       }
     });
     return (
       <div>
-        <div>
-          <TextField
-            label="Transition Keywords"
-            value={transitionKeywords.join(', ')}
-            onChange={this.setTransitionKeywords}
-            shouldFitContainer
-          />
-          <Button
-            appearance="primary"
-            disabled={isSaving}
-            isLoading={isSaving}
-            onClick={this.saveTransitionKeywords}
-          >
-            Save
-          </Button>
-        </div>
+        <Form name="transition-keywords" onSubmit={() => {}}>
+          {({ formProps }) => (
+            <form {...formProps}>
+              <FormHeader title="Transition Keywords" />
+              <Field name="transitionKeywords" label="Transition Keywords">
+                {() => (
+                  <Fragment>
+                    <TextField
+                      placholder="Transition Keywords"
+                      value={transitionKeywords.join(', ')}
+                      onChange={this.setTransitionKeywords}
+                    />
+                    <HelperMessage>
+                      These words will be used in conjuction with ticket IDs to
+                      transition the ticket to the set state
+                    </HelperMessage>
+                  </Fragment>
+                )}
+              </Field>
+              <Button
+                appearance="primary"
+                disabled={isSaving}
+                isLoading={isSaving}
+                onClick={this.saveTransitionKeywords}
+              >
+                Save
+              </Button>
+            </form>
+          )}
+        </Form>
         <Form
           name="set-default-transition"
           onSubmit={this.setDefaultTransition}
         >
           {({ formProps }) => (
             <form {...formProps}>
-              <FormHeader title="Set Default Transition Map" />
+              <FormHeader title="Default Transition Map" />
 
               <FormSection name="details">
-                <Field
-                  name="On Opened Status"
-                  label="On Opened Status"
-                  helperText="The Jira status to attempt to transition to when opening a merge request"
-                >
+                <Field name="On Opened Status" label="On Opened Status">
                   {() => (
-                    <Select
-                      options={statuses}
-                      isMulti
-                      getOptionValue={getStatusOptionValue}
-                      getOptionLabel={getStatusOptionLabel}
-                      onChange={this.selectDefaultOpenStatus}
-                    />
+                    <Fragment>
+                      <Select
+                        options={statuses}
+                        value={newDefaultOpenStatuses}
+                        {...statusSelectOptions}
+                        onChange={this.selectDefaultOpenStatus}
+                      />
+                      <HelperMessage>
+                        The Jira status to attempt to transition to when opening
+                        a merge request
+                      </HelperMessage>
+                    </Fragment>
                   )}
                 </Field>
-                <Field
-                  name="On Merged Status"
-                  label="On Merged Status"
-                  helperText="The Jira status to attempt to transition to when merging a merge request"
-                >
+                <Field name="On Merged Status" label="On Merged Status">
                   {() => (
-                    <Select
-                      options={statuses}
-                      isMulti
-                      getOptionValue={getStatusOptionValue}
-                      getOptionLabel={getStatusOptionLabel}
-                      onChange={this.selectDefaultMergeStatus}
-                    />
+                    <Fragment>
+                      <Select
+                        options={statuses}
+                        value={newDefaultMergeStatuses}
+                        {...statusSelectOptions}
+                        onChange={this.selectDefaultMergeStatus}
+                      />
+                      <HelperMessage>
+                        The Jira status to attempt to transition to when merging
+                        a merge request
+                      </HelperMessage>
+                    </Fragment>
                   )}
                 </Field>
-                <Field
-                  name="On Close Status"
-                  label="On Close Status"
-                  helperText="The Jira status to attempt to transition to when closing a merge request without merging"
-                >
+                <Field name="On Close Status" label="On Close Status">
                   {() => (
-                    <Select
-                      options={statuses}
-                      isMulti
-                      getOptionValue={getStatusOptionValue}
-                      getOptionLabel={getStatusOptionLabel}
-                      onChange={this.selectDefaultCloseStatus}
-                    />
+                    <Fragment>
+                      <Select
+                        options={statuses}
+                        value={newDefaultCloseStatuses}
+                        {...statusSelectOptions}
+                        onChange={this.selectDefaultCloseStatus}
+                      />
+                      <HelperMessage>
+                        The Jira status to attempt to transition to when closing
+                        a merge request without merging
+                      </HelperMessage>
+                    </Fragment>
                   )}
                 </Field>
               </FormSection>
@@ -343,6 +334,87 @@ class WebhookSettings extends Component<
             </form>
           )}
         </Form>
+        <Form name="create-transition" onSubmit={this.createTransition}>
+          {({ formProps }) => (
+            <form {...formProps}>
+              <FormHeader title="Transition Maps" />
+
+              <FormSection name="details">
+                <Field
+                  name="Jira Project"
+                  label="Jira Project"
+                  description="If a merge request is opened/merged/closed with a commit of the format `<Transition Keyword> <Jira issue key>` it will attempt to transition the issue to the relevant Status"
+                >
+                  {() => (
+                    <Select
+                      options={availableProjects}
+                      getOptionValue={getProjectOptionValue}
+                      getOptionLabel={getProjectOptionLabel}
+                      onChange={this.selectJiraProject}
+                    />
+                  )}
+                </Field>
+                <Field name="On Opened Status" label="On Opened Status">
+                  {() => (
+                    <Fragment>
+                      <Select
+                        options={statuses}
+                        {...statusSelectOptions}
+                        onChange={this.selectOpenStatus}
+                      />
+                      <HelperMessage>
+                        The Jira status to attempt to transition to when opening
+                        a merge request
+                      </HelperMessage>
+                    </Fragment>
+                  )}
+                </Field>
+                <Field name="On Merged Status" label="On Merged Status">
+                  {() => (
+                    <Fragment>
+                      <Select
+                        options={statuses}
+                        {...statusSelectOptions}
+                        onChange={this.selectMergeStatus}
+                      />
+                      <HelperMessage>
+                        The Jira status to attempt to transition to when merging
+                        a merge request
+                      </HelperMessage>
+                    </Fragment>
+                  )}
+                </Field>
+                <Field name="On Close Status" label="On Close Status">
+                  {() => (
+                    <Fragment>
+                      <Select
+                        options={statuses}
+                        {...statusSelectOptions}
+                        onChange={this.selectCloseStatus}
+                      />
+                      <HelperMessage>
+                        The Jira status to attempt to transition to when closing
+                        a merge request without merging
+                      </HelperMessage>
+                    </Fragment>
+                  )}
+                </Field>
+              </FormSection>
+              <FormFooter>
+                <FormFooter actions={{}}>
+                  <Button
+                    type="submit"
+                    appearance="primary"
+                    disabled={isSaving || !this.state.jiraProjectId}
+                    isLoading={isSaving}
+                  >
+                    Create New Transition Map
+                  </Button>
+                </FormFooter>
+              </FormFooter>
+            </form>
+          )}
+        </Form>
         <table>
           <thead>
             <tr>
@@ -353,7 +425,7 @@ class WebhookSettings extends Component<
             </tr>
           </thead>
           <tbody>
-            {defaultTransitionMap.map((transitionMap, index) => (
+            {defaultTransitionMap.map((transitionMap) => (
               <tr key={transitionMap.__meta.id}>
                 <td>{transitionMap.__meta.name}</td>
                 {['open', 'merge', 'close'].map((key) => (
@@ -423,88 +495,6 @@ class WebhookSettings extends Component<
             ))}
           </tbody>
         </table>
-        <Form name="create-transition" onSubmit={this.createTransition}>
-          {({ formProps }) => (
-            <form {...formProps}>
-              <FormHeader title="Add New Transition Map" />
-
-              <FormSection name="details">
-                <Field
-                  name="Jira Project"
-                  label="Jira Project"
-                  description="If a merge request is opened/merged/closed with a commit of the format `<Transition Keyword> <Jira issue key>` it will attempt to transition the issue to the relevant Status"
-                >
-                  {() => (
-                    <Select
-                      options={availableProjects}
-                      getOptionValue={getProjectOptionValue}
-                      getOptionLabel={getProjectOptionLabel}
-                      onChange={this.selectJiraProject}
-                    />
-                  )}
-                </Field>
-                <Field
-                  name="On Opened Status"
-                  label="On Opened Status"
-                  helperText="The Jira status to attempt to transition to when opening a merge request"
-                >
-                  {() => (
-                    <Select
-                      options={statuses}
-                      isMulti
-                      getOptionValue={getStatusOptionValue}
-                      getOptionLabel={getStatusOptionLabel}
-                      onChange={this.selectOpenStatus}
-                    />
-                  )}
-                </Field>
-                <Field
-                  name="On Merged Status"
-                  label="On Merged Status"
-                  helperText="The Jira status to attempt to transition to when merging a merge request"
-                >
-                  {() => (
-                    <Select
-                      options={statuses}
-                      isMulti
-                      getOptionValue={getStatusOptionValue}
-                      getOptionLabel={getStatusOptionLabel}
-                      onChange={this.selectMergeStatus}
-                    />
-                  )}
-                </Field>
-                <Field
-                  name="On Close Status"
-                  label="On Close Status"
-                  helperText="The Jira status to attempt to transition to when closing a merge request without merging"
-                >
-                  {() => (
-                    <Select
-                      options={statuses}
-                      isMulti
-                      getOptionValue={getStatusOptionValue}
-                      getOptionLabel={getStatusOptionLabel}
-                      onChange={this.selectCloseStatus}
-                    />
-                  )}
-                </Field>
-              </FormSection>
-              <FormFooter>
-                <FormFooter actions={{}}>
-                  <Button
-                    type="submit"
-                    appearance="primary"
-                    disabled={isSaving || !this.state.jiraProjectId}
-                    isLoading={isSaving}
-                  >
-                    Create New Transition Map
-                  </Button>
-                </FormFooter>
-              </FormFooter>
-            </form>
-          )}
-        </Form>
-        <p>{JSON.stringify(this.state)}</p>
       </div>
     );
   }
@@ -604,7 +594,7 @@ export default () => (
         return 'Error Happened';
       }
       return (
-        <WebhookSettings
+        <Transitions
           saveMetadata={saveMetadata}
           upsertTransition={upsertTransitionMap}
           setDefaultTransition={setDefaultTransition}

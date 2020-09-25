@@ -69,7 +69,7 @@ export async function setDevToolsCredential(
 
 export async function getCredential(
   jiraApp: *,
-  key: 'gitlab' | string
+  key: string
 ): ?GitlabCredential | ?JiraCredential {
   // $FlowFixMe
   const credential = await jiraApp.schema.models.Credentials.findOne({

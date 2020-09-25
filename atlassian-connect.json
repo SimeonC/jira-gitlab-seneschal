@@ -18,12 +18,7 @@
   "lifecycle": {
     "installed": "/installed"
   },
-  "scopes": [
-    "READ",
-    "WRITE",
-    "ADMIN",
-    "PROJECT_ADMIN"
-  ],
+  "scopes": ["READ", "WRITE", "ADMIN", "PROJECT_ADMIN"],
   "modules": {
     "jiraIssueGlances": [
       {
@@ -41,7 +36,7 @@
         },
         "target": {
           "type": "web_panel",
-          "url": "/gitlab-seneschal-merge-requests"
+          "url": "/mr-glance"
         },
         "name": {
           "value": "GitLab Seneschal"
@@ -65,7 +60,7 @@
         "name": {
           "value": "GitLab Merge Requests"
         },
-        "url": "/gitlab-seneschal-merge-requests",
+        "url": "/mr-glance",
         "conditions": [
           {
             "condition": "entity_property_equal_to",
@@ -75,7 +70,7 @@
               "value": "true"
             }
           }
-          ]
+        ]
       }
     ],
     "configurePage": {
@@ -97,10 +92,7 @@
         "value": "GitLab"
       },
       "logoUrl": "{{localBaseUrl}}/assets/gitlab-logo.svg",
-      "capabilities": [
-        "commit",
-        "pull_request"
-      ],
+      "capabilities": ["commit", "pull_request"],
       "name": {
         "value": "GitLab"
       },
@@ -121,6 +113,24 @@
         "name": {
           "value": "Gitlab Seneschal"
         }
+      },
+      {
+        "key": "gitlab-seneschal-project-settings-group",
+        "location": "atl.jira.proj.config",
+        "name": {
+          "value": "Gitlab Seneschal"
+        }
+      }
+    ],
+    "jiraProjectAdminTabPanels": [
+      {
+        "location": "gitlab-seneschal-project-settings-group",
+        "url": "/projectSettings",
+        "weight": 100,
+        "name": {
+          "value": "Gitlab Settings"
+        },
+        "key": "gitlab-seneschal-project-settings-page"
       }
     ],
     "adminPages": [
@@ -157,6 +167,19 @@
           "value": "Webhook Errors"
         },
         "url": "/admin?route=webhook-errors",
+        "conditions": [
+          {
+            "condition": "user_is_admin"
+          }
+        ]
+      },
+      {
+        "key": "gitlab-seneschal-settings",
+        "location": "admin_plugins_menu/gitlab-seneschal",
+        "name": {
+          "value": "Settings"
+        },
+        "url": "/admin?route=setup",
         "conditions": [
           {
             "condition": "user_is_admin"

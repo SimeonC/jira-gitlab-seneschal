@@ -1,8 +1,8 @@
+import { gql } from '@apollo/client';
 import React, { Component } from 'react';
-import { Query, Mutation } from 'react-apollo';
+import { Query, Mutation } from '@apollo/client/react/components';
 import { Redirect, Link } from 'react-router-dom';
 import Spinner from '@atlaskit/spinner';
-import gql from 'graphql-tag';
 
 const isProjectLoadingQuery = gql`
   query IsLoadingQuery($projectId: String!) {

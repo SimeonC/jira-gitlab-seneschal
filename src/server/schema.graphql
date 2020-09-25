@@ -57,11 +57,15 @@ type DevToolsStatus {
   status: String
 }
 
+type Transitions {
+  autoAdd: String
+}
+
 type Queries {
   appSettings: AppSettings
   isSetup: IsSetupResponse
   devToolsStatus: DevToolsStatus
-  jiraProjects: [JiraProject!]!
+  jiraProjects(jiraProjectId: String): [JiraProject!]!
   gitlabProjects: [GitlabProject!]!
   processingFailures: [ProcessingFailure]
   processingProjects: [ProcessingProject]
@@ -84,8 +88,10 @@ type Queries {
   jiraResolutions: [JiraResolution!]!
   jiraPriorities: [JiraPriority!]!
   getWebhookMetadata: WebhookMetadata
+  getProjectWebhookTransitionMap(jiraProjectId: String!): WebhookTransitionMap!
   webhooks: [WebhookStatus!]!
   webhookErrors(pageSize: Int, pageOffset: Int): PaginatedWebhookErrors
+  getWebhookSettings: Transitions
 }
 
 type Mutations {
@@ -144,6 +150,8 @@ type Mutations {
   retryWebhook(id: String!): SuccessResponse
   deleteWebhookFailure(id: String!): SuccessResponse
   deleteAllWebhookFailures: SuccessResponse
+  setWebhookSetting(key: String!, value: String!): SuccessResponse
+  deleteWebhookSetting(key: String!): SuccessResponse
 }
 
 schema {

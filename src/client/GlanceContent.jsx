@@ -40,9 +40,7 @@ export default class Glance extends Component {
       try {
         if (response.jira && response.jira.issue && response.jira.issue.key) {
           window.AP.request(
-            `/rest/api/3/issue/${
-              response.jira.issue.key
-            }/properties/${jiraIssueGlancePropertyKey}`
+            `/rest/api/3/issue/${response.jira.issue.key}/properties/${jiraIssueGlancePropertyKey}`
           )
             .then((response) => {
               if (response.body) {

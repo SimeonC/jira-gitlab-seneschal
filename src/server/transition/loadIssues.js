@@ -8,22 +8,30 @@ import GitlabApi from '../apis/gitlab';
 import initModels, { type DatabaseType } from '../models';
 import type { ProcessingProjectType } from './types';
 
-export type MessageType = {
-  init?: boolean,
-  url?: boolean,
-  projectId: string
+type InitMessageType = {
+  init: boolean,
+  url: string
+};
+type LoadProjectMessageType = {
+  projectId: string,
+  clientKey: string
 };
 
 const databasePromise: Promise<DatabaseType> = new Promise((resolve) => {
-  process.on('message', (message: MessageType) => {
+  process.on('message', (message: InitMessageType | LoadProjectMessageType) => {
     try {
       if (message.init) {
+        const { url } = ((message: any): InitMessageType);
+        const sequelizeDb = new Sequelize(url, { logger });
         // $FlowFixMe
-        const sequelizeDb = new Sequelize(message.url, { logger });
         resolve(initModels(sequelizeDb).then(() => sequelizeDb.models));
         processIssues();
-      } else if (message.projectId) {
-        loadGitlabProjectIssues(message.projectId);
+      } else if (message.projectId && message.clientKey) {
+        const {
+          projectId,
+          clientKey
+        } = ((message: any): LoadProjectMessageType);
+        loadGitlabProjectIssues(projectId, clientKey);
       }
     } catch (e) {
       console.error(e);
@@ -119,7 +127,7 @@ async function processIssue(project: ProcessingProjectType) {
   });
 }
 
-async function loadGitlabProjectIssues(projectId: string) {
+async function loadGitlabProjectIssues(projectId: string, clientKey: string) {
   const database = await databasePromise;
   await database.MigrationProjects.create({
     projectId,
@@ -130,12 +138,15 @@ async function loadGitlabProjectIssues(projectId: string) {
     totalCount: 1,
     currentMessage: 'Loading'
   });
-  const gitlabApi = await GitlabApi({
-    schema: database,
-    config: {
-      CREDENTIAL_ENCRYPTION_KEY: () => process.env.CREDENTIAL_ENCRYPTION_KEY
-    }
-  });
+  const gitlabApi = await GitlabApi(
+    {
+      schema: database,
+      config: {
+        CREDENTIAL_ENCRYPTION_KEY: () => process.env.CREDENTIAL_ENCRYPTION_KEY
+      }
+    },
+    clientKey
+  );
   const projectMeta = await gitlabApi.Projects.show(projectId);
   // $FlowFixMe
   await database.MigrationProjects.update(

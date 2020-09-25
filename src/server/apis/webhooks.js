@@ -55,7 +55,7 @@ export async function getWebhookMetadata(
   });
   if (!transitionMetadata) {
     if (!force) {
-      throw new Error('Webhook has not been setup for this clientKey');
+      throw new Error('No Webhooks have been setup for this clientKey');
     }
     await database.WebhookTransitions.upsert({
       clientKey,
@@ -85,12 +85,13 @@ export async function registerProject(
   database: DatabaseType,
   projectId: string,
   projectName: string,
-  projectUrl: string
+  projectUrl: string,
+  status?: string = 'pending'
 ): Promise<boolean> {
   return await upsertProject(database, projectId, {
     name: projectName,
     url: projectUrl,
-    status: 'pending',
+    status,
     version
   });
 }
@@ -127,7 +128,6 @@ export async function updateProject(
 export async function allProjects(
   database: DatabaseType
 ): Promise<WebhookProjectStatusType[]> {
-  // $FlowFixMe
   try {
     return await database.WebhookStatuses.findAll();
   } catch (e) {

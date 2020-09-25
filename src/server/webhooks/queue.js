@@ -43,13 +43,9 @@ export async function enqueueWebhook(jiraAddon: *, element: QueueElement) {
 async function processElement(
   jiraAddon: *,
   gitlabApiInstance: *,
-  queueElement: QueueElement
+  queueElement: QueueElement,
+  clientKey: string
 ) {
-  const clientKey = await getWebhookClientKey(
-    jiraAddon.schema.models,
-    queueElement.key,
-    queueElement.secretKey
-  );
   // It's OK if this errors - it just means it'll get retried later.
   const webhookMetadata = await getWebhookMetadata(
     jiraAddon.schema.models,
@@ -130,9 +126,19 @@ export async function processQueue(jiraAddon: *) {
         id: nextQueueItem.id
       }
     });
-    const gitlabApiInstance = await gitlabApi(jiraAddon);
+    const clientKey = await getWebhookClientKey(
+      jiraAddon.schema.models,
+      nextQueueItem.key,
+      nextQueueItem.secretKey
+    );
+    const gitlabApiInstance = await gitlabApi(jiraAddon, clientKey);
     try {
-      await processElement(jiraAddon, gitlabApiInstance, nextQueueItem);
+      await processElement(
+        jiraAddon,
+        gitlabApiInstance,
+        nextQueueItem,
+        clientKey
+      );
     } catch (error) {
       console.error(error);
       try {

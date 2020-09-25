@@ -25,14 +25,15 @@ export default async function createJiraIssue(
   jiraAddon: *,
   gitlabProjectId: string,
   gitlabIssueIid: string,
-  logger: (message: string) => void
+  logger: (message: string) => void,
+  clientKey: string
 ) {
   const { api: jiraApi, baseUrl: jiraBaseUrl } = await initJiraApi(
     jiraAddon,
     gitlabProjectId
   );
   const database: DatabaseType = jiraAddon.schema.models;
-  const gitlabApi = await GitlabApi(jiraAddon);
+  const gitlabApi = await GitlabApi(jiraAddon, clientKey);
 
   const mappingQueryOptions = {
     where: {

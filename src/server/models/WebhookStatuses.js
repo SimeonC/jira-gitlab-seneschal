@@ -2,10 +2,7 @@ import semver from 'semver';
 import { DataTypes } from 'sequelize';
 import { version } from '../../../package';
 
-const currentMinorVersion = version
-  .split('.')
-  .slice(0, 2)
-  .join('.');
+const currentMinorVersion = version.split('.').slice(0, 2).join('.');
 
 export default [
   {

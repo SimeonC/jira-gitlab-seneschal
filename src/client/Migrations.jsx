@@ -1,13 +1,14 @@
 import React, { Component, Fragment } from 'react';
-import styled, { css } from 'styled-components';
-import { Query, Mutation } from 'react-apollo';
-import gql from 'graphql-tag';
+import styled from '@emotion/styled';
+import { css } from '@emotion/core';
+import { Query, Mutation } from '@apollo/client/react/components';
+import { gql } from '@apollo/client';
 import { Link } from 'react-router-dom';
 
 import Page, { Grid, GridColumn } from '@atlaskit/page';
 import DynamicTable from '@atlaskit/dynamic-table';
 import Spinner from '@atlaskit/spinner';
-import Button from '@atlaskit/button';
+import Button from '@atlaskit/button/loading-button';
 import BaseSelect from '@atlaskit/select';
 
 const fullWidthCss = css`
@@ -38,13 +39,6 @@ const Select = styled(BaseSelect)`
     width: 100%;
   }
 `;
-
-// Step 1. Select Gitlab Project
-// Step 2. Load Gitlab Project into file system
-// Step 3. Select Jira Project
-// Step 4. Load Jira IssueTypes, Versions, Components
-// Step 5. Build Mapping (Must map all Milestones -> Versions or ignore)
-// Step 6. Confirm and run transition
 
 const getOptionValue = (option) => option.id;
 const getOptionLabel = (option) => option.nameWithNamespace || option.name;

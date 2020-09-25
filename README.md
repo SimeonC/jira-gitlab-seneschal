@@ -21,7 +21,6 @@ A tool for migrating to and managing issues in JIRA and Git in GitLab.
   <a href="https://corp.tablecheck.com"><img width="260" src="https://corp.tablecheck.com/images/logo/tc-logo-color.svg" /></a>
 </div>
 
-
 ### Migration Notes
 
 The transitions scripts require you to enable "All statuses can transition to '...'" for all statuses you want to map to. This allows us to map the gitlab column "Labels" to their equivalent "Statuses" in JIRA.
@@ -39,11 +38,11 @@ If you are running in dev mode follow the instructions for "The Dev Loop" here; 
 
 When running in production the following ENV Vars should be defined as follows;
 
-| var             | usage                                                        |
-| --------------- | ------------------------------------------------------------ |
-| `$PORT`         | Server Port to run express server on                         |
-| `$APP_URL`      | Url that the addon will run on                               |
-| `$DATABASE_URL` | Url of the Postgres database to connect to                   |
+| var             | usage                                                                                                                                                                                                           |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$PORT`         | Server Port to run express server on                                                                                                                                                                            |
+| `$APP_URL`      | Url that the addon will run on                                                                                                                                                                                  |
+| `$DATABASE_URL` | Url of the Postgres database to connect to                                                                                                                                                                      |
 | `$JIRA_HOST`    | Host domain of your Jira instance, can be a wildcard. If you need more than one in the whitelist I recommend editing the `config.json` file directly. eg `*.atlassian.net` will allow all cloud jira instances. |
 
 ### Releasing
@@ -56,5 +55,5 @@ To ensure this system works all commits must follow the [Angular commit conventi
 
 ### Weird bugs
 
-* When upgrading dependencies watch out for the version of sequelize as set in atlassian-express-connect.
-The versions must match or certain checks like `instanceof` will fail.  
+- When upgrading dependencies watch out for the version of sequelize as set in atlassian-express-connect.
+  The versions must match or certain checks like `instanceof` will fail - this basically means we have to match the atlassian-express-connect version.

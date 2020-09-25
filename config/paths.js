@@ -3,6 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const url = require('url');
+const { frontendPages } = require('../src/frontendPages');
 
 // Make sure any symlinks in the project folder are resolved:
 // https://github.com/facebookincubator/create-react-app/issues/637
@@ -44,8 +45,6 @@ module.exports = {
   appBuild: resolveApp('build/client'),
   appPublic: resolveApp('public'),
   appHtml: resolveApp('public/index.html'),
-  appIndexJs: resolveApp('src/client/index.jsx'),
-  mrGlanceJs: resolveApp('src/client/mrGlance.jsx'),
   appPackageJson: resolveApp('package.json'),
   appSrc: resolveApp('src'),
   yarnLockFile: resolveApp('yarn.lock'),

@@ -3,7 +3,9 @@ import mapKeys from 'lodash/mapKeys';
 import camelCase from 'lodash/camelCase';
 import path from 'path';
 import { fork } from 'child_process';
-import gitlabApi from './apis/gitlab';
+import gitlabApi, {
+  getAllProjects as getAllGitlabProjects
+} from './apis/gitlab';
 import { jiraRequest } from './apis/jira';
 import {
   getCredential,
@@ -42,6 +44,7 @@ import projectMappingApi from './apis/projectMapping';
 import { createWebhooks } from './webhooks';
 import type { DatabaseType } from './models';
 import type { GitlabCredential } from './apis/credentials';
+import initWebhookSettings from './webhooks/settings';
 
 type SuccessResponseType = {
   success: boolean
@@ -64,9 +67,13 @@ process.on('SIGINT', () => cleanExit('SIGINT')); // catch ctrl-c
 process.on('SIGUSR2', () => cleanExit('SIGUSR2')); // catch ctrl-c
 process.on('SIGTERM', () => cleanExit('SIGTERM')); // catch kill
 
-async function testGitlabCredentials(database: DatabaseType, jiraAddon: *) {
+async function testGitlabCredentials(
+  database: DatabaseType,
+  jiraAddon: *,
+  clientKey
+) {
   try {
-    const api = await gitlabApi(jiraAddon);
+    const api = await gitlabApi(jiraAddon, clientKey);
     await api.Users.current();
     return true;
   } catch (err) {
@@ -82,16 +89,16 @@ export default function (addon: *) {
     ...addon.config.store()
   });
 
-  async function isSetup() {
+  async function isSetup(root: *, params: *, req: *) {
     let currentUrl;
     let success = false;
     let username;
     try {
-      const api = await gitlabApi(addon);
+      const api = await gitlabApi(addon, req.context.clientKey);
       ({ username } = await api.Users.current());
       const credential: GitlabCredential = (await getCredential(
         addon,
-        'gitlab'
+        `${req.context.clientKey}_gitlab`
       ): any);
       currentUrl = credential.appUrl;
       success = true;
@@ -201,13 +208,27 @@ export default function (addon: *) {
     });
   }
 
-  async function jiraProjects(root: *, params: *, req: *) {
-    const projectRequest = await jiraRequest(
-      addon.httpClient(req),
-      'get',
-      '/project'
-    );
-    return projectRequest.map((project) => {
+  async function jiraProjects(
+    root: *,
+    { jiraProjectId }: { jiraProjectId?: string },
+    req: *
+  ) {
+    let projectsRequest;
+    if (jiraProjectId) {
+      const projectRequest = await jiraRequest(
+        addon.httpClient(req),
+        'get',
+        `/project/${jiraProjectId}`
+      );
+      projectsRequest = [projectRequest];
+    } else {
+      projectsRequest = await jiraRequest(
+        addon.httpClient(req),
+        'get',
+        '/project'
+      );
+    }
+    return projectsRequest.map((project) => {
       project.avatarUrls = {
         __typename: 'JiraAvatarUrls',
         size48: project.avatarUrls['48x48'],
@@ -281,13 +302,8 @@ export default function (addon: *) {
     return await jiraRequest(addon.httpClient(req), 'get', '/status');
   }
 
-  async function gitlabProjects() {
-    const api = await gitlabApi(addon);
-    const projects = await api.Projects.all({
-      archived: false,
-      membership: true,
-      simple: true
-    });
+  async function gitlabProjects(root: *, params: *, req: *) {
+    const projects = await getAllGitlabProjects(addon, req.context.clientKey);
     return projects.map((project) =>
       mapKeys(project, (value, key) => camelCase(key))
     );
@@ -306,10 +322,12 @@ export default function (addon: *) {
 
   async function loadGitlabProject(
     root: *,
-    { projectId }: { projectId: string }
+    { projectId }: { projectId: string },
+    req: *
   ) {
     loadGitlabProjectProcess.send({
-      projectId
+      projectId,
+      clientKey: req.context.clientKey
     });
     return {
       success: true
@@ -427,12 +445,20 @@ export default function (addon: *) {
 
   async function setGitlabCredentials(
     root: *,
-    { appUrl, token }: { appUrl: string, token: string }
+    { appUrl, token }: { appUrl: string, token: string },
+    req: *
   ) {
     try {
-      await setCredential(addon, 'gitlab', { appUrl, token });
+      await setCredential(addon, `${req.context.clientKey}_gitlab`, {
+        appUrl,
+        token
+      });
       return {
-        success: testGitlabCredentials(addon.schema.models, addon)
+        success: testGitlabCredentials(
+          addon.schema.models,
+          addon,
+          req.context.clientKey
+        )
       };
     } catch (error) {
       console.error(error);
@@ -547,6 +573,29 @@ export default function (addon: *) {
     return createWebhooks(addon, gitlabProjectId, req.context.clientKey);
   }
 
+  async function getProjectWebhookTransitionMap(
+    root: *,
+    { jiraProjectId }: { jiraProjectId: string },
+    req: *
+  ): WebhookTransitionMapType {
+    const result = await addon.schema.models.WebhookTransitionMaps.findOne({
+      where: {
+        jiraProjectId,
+        clientKey: req.context.clientKey
+      }
+    });
+    if (!result) {
+      return {
+        jiraProjectId,
+        jiraProjectKey: '',
+        mergeStatusIds: [],
+        openStatusIds: [],
+        closeStatusIds: []
+      };
+    }
+    return result;
+  }
+
   async function webhooks(): WebhookProjectStatusType[] {
     return await allProjects(addon.schema.models);
   }
@@ -600,6 +649,12 @@ export default function (addon: *) {
     };
   }
 
+  const {
+    getWebhookSettings,
+    setWebhookSetting,
+    deleteWebhookSetting
+  } = initWebhookSettings(addon);
+
   // bind all these functions to pass in the addon/jira api
   return projectMappingApi(addon, {
     Queries: {
@@ -623,8 +678,10 @@ export default function (addon: *) {
       jiraComponents,
       jiraStatuses,
       getWebhookMetadata,
+      getProjectWebhookTransitionMap,
       webhooks,
-      webhookErrors
+      webhookErrors,
+      getWebhookSettings
     },
     Mutations: {
       setAppSetting,
@@ -643,7 +700,9 @@ export default function (addon: *) {
       retryAllFailures,
       retryWebhook,
       deleteWebhookFailure,
-      deleteAllWebhookFailures
+      deleteAllWebhookFailures,
+      setWebhookSetting,
+      deleteWebhookSetting
     }
   });
 }

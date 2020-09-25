@@ -1,7 +1,7 @@
 // @flow
 import React, { Component } from 'react';
-import { ApolloConsumer } from 'react-apollo';
-import gql from 'graphql-tag';
+import { ApolloConsumer } from '@apollo/client';
+import { gql } from '@apollo/client';
 import moment from 'moment';
 
 import ReactJson from 'react-json-view';

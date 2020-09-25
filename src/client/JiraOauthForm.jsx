@@ -1,7 +1,7 @@
 // @flow
 import React from 'react';
-import { Mutation, Query } from 'react-apollo';
-import gql from 'graphql-tag';
+import { Mutation, Query } from '@apollo/client/react/components';
+import { gql } from '@apollo/client';
 import Form, {
   Field,
   FormHeader,
@@ -9,7 +9,7 @@ import Form, {
   FormFooter
 } from '@atlaskit/form';
 import TextField from '@atlaskit/textfield';
-import Button from '@atlaskit/button';
+import Button from '@atlaskit/button/loading-button';
 import Spinner from '@atlaskit/spinner';
 import Lozenge from '@atlaskit/lozenge';
 

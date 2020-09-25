@@ -403,9 +403,9 @@ export default async function processWebhookMergeRequest(
           url: `${hookData.project.web_url}/commits/${commit.id}`,
           files: diffs.map((diff) => ({
             path: diff.new_path,
-            url: `${hookData.project.web_url}/blob/${
-              commit.id
-            }/${diff.new_path || diff.old_path}`,
+            url: `${hookData.project.web_url}/blob/${commit.id}/${
+              diff.new_path || diff.old_path
+            }`,
             changeType:
               diff.new_file && diff.old_path
                 ? 'COPIED'

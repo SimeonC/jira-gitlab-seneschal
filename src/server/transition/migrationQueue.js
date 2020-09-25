@@ -12,7 +12,8 @@ import createVersionsFromMilestones from './createVersions';
 type QueueElement = {
   // gitlab project id
   projectId: string,
-  issueIid: string
+  issueIid: string,
+  clientKey: string
 };
 
 type ProcessingProject = {
@@ -35,7 +36,8 @@ export async function reprocessAllFailures(jiraAddon: *) {
   await database.MigrationQueue.bulkCreate(
     failures.map(({ queueElement }) => ({
       projectId: queueElement.projectId,
-      issueIid: queueElement.issueIid
+      issueIid: queueElement.issueIid,
+      clientKey: queueElement.clientKey
     }))
   );
   const tempSql = jiraAddon.schema.dialect.QueryGenerator.selectQuery(
@@ -134,7 +136,7 @@ export async function startProcessingProject(
     queryOptions
   );
   await database.MigrationQueue.bulkCreate(
-    issues.map(({ iid }) => ({ projectId, issueIid: `${iid}` }))
+    issues.map(({ iid }) => ({ projectId, issueIid: `${iid}`, clientKey }))
   );
 
   // intentionally not awaiting this promise
@@ -244,7 +246,8 @@ async function processQueueElement(jiraAddon: *, queueElement: QueueElement) {
           },
           queryOptions
         );
-      }
+      },
+      queueElement.clientKey
     );
 
     await database.MigrationProjects.increment('completedCount', queryOptions);

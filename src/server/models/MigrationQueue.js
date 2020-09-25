@@ -17,6 +17,10 @@ export default [
       type: DataTypes.STRING,
       allowNull: false,
       unique: 'compositeIndex'
+    },
+    clientKey: {
+      type: DataTypes.STRING,
+      allowNull: false
     }
   }
 ];

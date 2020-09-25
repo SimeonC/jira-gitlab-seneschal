@@ -1,14 +1,14 @@
 // @flow
 import React, { Component, Fragment, type Element } from 'react';
-import { Query, Mutation } from 'react-apollo';
+import { Query, Mutation } from '@apollo/client/react/components';
 import { Link } from 'react-router-dom';
 import PropTypes from 'prop-types';
-import styled from 'styled-components';
+import styled from '@emotion/styled';
 import get from 'lodash/get';
 import Spinner from '@atlaskit/spinner';
-import gql from 'graphql-tag';
+import { gql } from '@apollo/client';
 import Select from '@atlaskit/select/dist/esm/Select';
-import Button from '@atlaskit/button';
+import Button from '@atlaskit/button/loading-button';
 import Form, { Field } from '@atlaskit/form';
 import ReactJson from 'react-json-view';
 import type { TransitionMappingType } from '../../../server/transition/types';

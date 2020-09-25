@@ -1,38 +1,38 @@
 // @flow
-import React, { Component } from 'react';
-import { Query } from 'react-apollo';
-import gql from 'graphql-tag';
+import React, { type Node } from 'react';
+import { Query } from '@apollo/client/react/components';
+import { gql } from '@apollo/client';
 import Spinner from '@atlaskit/spinner';
 
 import GitlabTokenForm from './GitlabTokenForm';
 
 type PropsType = {
-  children: *
+  children: Node,
+  invalidSetupChildren?: Node
 };
 
-export default class Authenticate extends Component<PropsType> {
-  render() {
-    const { children } = this.props;
-    return (
-      <Query
-        query={gql`
-          {
-            isSetup {
-              success
-            }
+const Authenticate = ({ children, invalidSetupChildren }: PropsType) => {
+  return (
+    <Query
+      query={gql`
+        {
+          isSetup {
+            success
           }
-        `}
-      >
-        {({ loading, error, data = {} }) => {
-          if (loading) {
-            return <Spinner />;
-          }
-          if (error || !data || !data.isSetup.success) {
-            return <GitlabTokenForm />;
-          }
-          return children;
-        }}
-      </Query>
-    );
-  }
-}
+        }
+      `}
+    >
+      {({ loading, error, data = {} }) => {
+        if (loading) {
+          return <Spinner />;
+        }
+        if (error || !data || !data.isSetup.success) {
+          return invalidSetupChildren || <GitlabTokenForm />;
+        }
+        return children;
+      }}
+    </Query>
+  );
+};
+
+export default Authenticate;

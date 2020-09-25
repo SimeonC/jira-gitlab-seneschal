@@ -1,15 +1,16 @@
 // @flow
-import React from 'react';
-import { Mutation, Query } from 'react-apollo';
-import gql from 'graphql-tag';
+import React, { Fragment } from 'react';
+import { Mutation, Query } from '@apollo/client/react/components';
+import { gql } from '@apollo/client';
 import Form, {
   Field,
   FormHeader,
   FormSection,
-  FormFooter
+  FormFooter,
+  HelperMessage
 } from '@atlaskit/form';
 import TextField from '@atlaskit/textfield';
-import Button from '@atlaskit/button';
+import Button from '@atlaskit/button/loading-button';
 import Spinner from '@atlaskit/spinner';
 import CheckIcon from '@atlaskit/icon/glyph/check-circle';
 
@@ -92,20 +93,33 @@ const FormContent = ({ isSaving, onSubmit, response }: PropsType) => {
             <Field
               name="appUrl"
               label="Gitlab App Url"
-              helperText="Enter the url of your gitlab instance"
               defaultValue=""
               isRequired
             >
-              {({ fieldProps }) => <TextField {...fieldProps} />}
+              {({ fieldProps }) => (
+                <Fragment>
+                  <TextField {...fieldProps} />
+                  <HelperMessage>
+                    Enter the url of your gitlab instance
+                  </HelperMessage>
+                </Fragment>
+              )}
             </Field>
             <Field
               name="token"
               label="Gitlab API Token"
-              helperText="Enter the API token generated from the gitlab user settings, this Token should have admin permissions"
               defaultValue=""
               isRequired
             >
-              {({ fieldProps }) => <TextField {...fieldProps} />}
+              {({ fieldProps }) => (
+                <Fragment>
+                  <TextField {...fieldProps} />
+                  <HelperMessage>
+                    Enter the API token generated from the gitlab user settings,
+                    this Token should have admin permissions
+                  </HelperMessage>
+                </Fragment>
+              )}
             </Field>
           </FormSection>
           <FormFooter actions={{}}>

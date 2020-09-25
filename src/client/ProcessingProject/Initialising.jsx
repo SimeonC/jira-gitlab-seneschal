@@ -1,6 +1,6 @@
+import { gql } from '@apollo/client';
 import React, { Component } from 'react';
-import { Query } from 'react-apollo';
-import gql from 'graphql-tag';
+import { Query } from '@apollo/client/react/components';
 import { Redirect } from 'react-router-dom';
 import Spinner from '@atlaskit/spinner';
 
