@@ -13,6 +13,12 @@ export default [
     value: {
       type: DataTypes.STRING,
       allowNull: false
+    },
+    jiraProjectId: {
+      type: DataTypes.STRING
+    },
+    gitlabProjectId: {
+      type: DataTypes.STRING
     }
   }
 ];

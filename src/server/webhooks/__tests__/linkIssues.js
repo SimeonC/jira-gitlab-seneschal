@@ -11,10 +11,22 @@ function writeLink(issue) {
 
 cases(
   'processCommits',
-  ({ projectKeys, baseUrl, text, foundIssues, resultText }) => {
-    const { issues, newText } = linkIssues(projectKeys, baseUrl, text);
+  ({
+    projectKeys,
+    baseUrl,
+    text,
+    foundIssues,
+    resultText,
+    safeText = text
+  }) => {
+    const { issues, newText, text: safeTextResult } = linkIssues(
+      projectKeys,
+      baseUrl,
+      text
+    );
     expect(issues).toEqual(foundIssues);
     expect(newText).toEqual(resultText);
+    expect(safeTextResult).toEqual(safeText);
   },
   [
     {
@@ -32,6 +44,7 @@ cases(
       projectKeys,
       baseUrl,
       text: `This tests if ${baseUrl}/browse/${issueKeys[0]} is correctly matched`,
+      safeText: `This tests if ${issueKeys[0]} is correctly matched`,
       foundIssues: [issueKeys[0]],
       resultText: `This tests if ${writeLink(
         issueKeys[0]
@@ -50,6 +63,7 @@ cases(
       projectKeys,
       baseUrl,
       text: `${baseUrl}/browse/${issueKeys[0]} is correctly matched`,
+      safeText: `${issueKeys[0]} is correctly matched`,
       foundIssues: [issueKeys[0]],
       resultText: `${writeLink(issueKeys[0])} is correctly matched`
     },
@@ -66,6 +80,7 @@ cases(
       projectKeys,
       baseUrl,
       text: `This tests if ${baseUrl}/browse/${issueKeys[0]}`,
+      safeText: `This tests if ${issueKeys[0]}`,
       foundIssues: [issueKeys[0]],
       resultText: `This tests if ${writeLink(issueKeys[0])}`
     },
@@ -82,6 +97,7 @@ cases(
       projectKeys,
       baseUrl,
       text: `This tests if ${writeLink(issueKeys[0])} is correctly matched`,
+      safeText: `This tests if ${issueKeys[0]} is correctly matched`,
       foundIssues: [issueKeys[0]],
       resultText: null
     },
@@ -92,6 +108,7 @@ cases(
       text: `This tests if ${writeLink(
         issueKeys[0]
       )} is correctly matched and ${issueKeys[1]}`,
+      safeText: `This tests if ${issueKeys[0]} is correctly matched and ${issueKeys[1]}`,
       foundIssues: [issueKeys[0], issueKeys[1]],
       resultText: `This tests if ${writeLink(
         issueKeys[0]
@@ -106,6 +123,7 @@ cases(
       )} is correctly matched and ${
         issueKeys[1]
       } and lastly ${baseUrl}/browse/${issueKeys[2]} is parsed`,
+      safeText: `This tests if ${issueKeys[0]} is correctly matched and ${issueKeys[1]} and lastly ${issueKeys[2]} is parsed`,
       foundIssues: [issueKeys[0], issueKeys[1], issueKeys[2]],
       resultText: `This tests if ${writeLink(
         issueKeys[0]

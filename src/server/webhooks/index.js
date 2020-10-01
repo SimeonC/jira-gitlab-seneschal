@@ -55,8 +55,8 @@ export async function createWebhooks(
     merge_requests_events: true,
     note_events: true,
     token: secretKey,
+    push_events: true,
     // These should be all defaulted but here for easy reference
-    push_events: false,
     tag_push_events: false,
     repository_update_events: false,
     enable_ssl_verification: false,

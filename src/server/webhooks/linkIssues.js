@@ -2,7 +2,7 @@ function parseTextBlock(
   jiraProjectKeys: string[],
   baseUrl: string,
   text: string
-): { issues: string[], newText: ?string } {
+): { issues: string[], markdown: ?string, text: string } {
   const regexSafeBaseUrl = `${baseUrl}/browse/`.replace(
     /[.*+?^${}()|[\]\\]/g,
     '\\$&'
@@ -15,51 +15,87 @@ function parseTextBlock(
   );
   const issues = [];
   const transformedIssues = [];
-  const newText = text.replace(
-    matchRegex,
-    (match, openingMatch, projectKey, issueId, closingMatch) => {
-      const issueKey = `${projectKey.toUpperCase()}-${issueId}`;
-      if (issues.indexOf(issueKey) === -1) {
-        issues.push(issueKey);
-      }
-      if (openingMatch !== '[' && transformedIssues.indexOf(issueKey) === -1) {
-        transformedIssues.push(issueKey);
-      }
-      if (
-        !new RegExp(`${regexSafeBaseUrl}`, 'i').test(openingMatch) &&
-        (openingMatch !== '[' || !/^\]\(http[^)]+\)$/i.test(closingMatch))
-      ) {
-        return `${openingMatch}[${issueKey}](${baseUrl}/browse/${issueKey})${closingMatch}`;
-      }
-      return `[${issueKey}](${baseUrl}/browse/${issueKey})${
+  let currentMatch = matchRegex.exec(text);
+  let newMarkdown = '';
+  let safeText = '';
+  let lastIndex = 0;
+  if (!currentMatch) {
+    return {
+      issues: [],
+      markdown: null,
+      text
+    };
+  }
+
+  while (currentMatch) {
+    const [
+      match,
+      openingMatch,
+      projectKey,
+      issueId,
+      closingMatch
+    ] = currentMatch;
+    const startIndex = currentMatch.index;
+    newMarkdown += text.substring(lastIndex, startIndex);
+    safeText += text.substring(lastIndex, startIndex);
+    lastIndex = startIndex + match.length;
+    const issueKey = `${projectKey.toUpperCase()}-${issueId}`;
+    if (issues.indexOf(issueKey) === -1) {
+      issues.push(issueKey);
+    }
+    if (openingMatch !== '[' && transformedIssues.indexOf(issueKey) === -1) {
+      transformedIssues.push(issueKey);
+    }
+    if (
+      !new RegExp(`${regexSafeBaseUrl}`, 'i').test(openingMatch) &&
+      (openingMatch !== '[' || !/^\]\(http[^)]+\)$/i.test(closingMatch))
+    ) {
+      newMarkdown += `${openingMatch}[${issueKey}](${baseUrl}/browse/${issueKey})${closingMatch}`;
+      safeText += `${openingMatch}${issueKey}${closingMatch}`;
+    } else {
+      newMarkdown += `[${issueKey}](${baseUrl}/browse/${issueKey})${
         openingMatch === '[' ? '' : closingMatch
       }`;
+      safeText += `${issueKey}${openingMatch === '[' ? '' : closingMatch}`;
     }
-  );
+
+    currentMatch = matchRegex.exec(text);
+  }
+
+  if (lastIndex && lastIndex < text.length) {
+    newMarkdown += text.substring(lastIndex);
+    safeText += text.substring(lastIndex);
+  }
+
+  safeText = safeText.replace(/\[([^]+)\]\([^\)]\)/gi, '$1');
 
   return {
     issues,
-    newText: transformedIssues.length ? newText : null
+    markdown: transformedIssues.length ? newMarkdown : null,
+    text: safeText
   };
 }
 
-export default function linkIssues(
-  jiraProjectKeys: string[],
+export function parseMarkdown(
+  jiraProjectKeys: String[],
   baseUrl: string,
-  text: string
-): { issues: string[], newText: ?string } {
+  inputText: string
+): { text: string, markdown?: string, issues?: string[] }[] {
   const splitRegex = /\\`|```|`|\\[^`]|[^`\\]+/gi;
-  if (!/`/gi.test(text)) {
-    return parseTextBlock(jiraProjectKeys, baseUrl, text);
+  if (!/`/gi.test(inputText)) {
+    return [parseTextBlock(jiraProjectKeys, baseUrl, inputText)];
   }
-  let match = splitRegex.exec(text);
-  const result = {
-    newText: '',
-    issues: []
-  };
+  let match = splitRegex.exec(inputText);
+  const result = [];
   let isCode = false;
   let isCodeBlock = false;
+  let lastIndex = 0;
   while (match) {
+    const substring = inputText.substring(lastIndex, match.index);
+    result.push({ text: substring, markdown: substring });
+    let text = match[0];
+    let markdown;
+    let issues;
     if (isCode) {
       if (
         (isCodeBlock && match[0] === '```') ||
@@ -67,20 +103,49 @@ export default function linkIssues(
       ) {
         isCode = false;
       }
-      result.newText += match[0];
     } else if (match[0] === '```' || match[0] === '`') {
       isCode = true;
       isCodeBlock = match[0] === '```';
-      result.newText += match[0];
-    } else if (match[0] === '\\') {
-      result.newText += match[0];
-    } else {
-      const blockResult = parseTextBlock(jiraProjectKeys, baseUrl, match[0]);
-      result.issues = result.issues.concat(blockResult.issues);
-      result.newText =
-        (result.newText || '') + (blockResult.newText || match[0]);
+    } else if (match[0] !== '\\') {
+      const parsedResult = parseTextBlock(jiraProjectKeys, baseUrl, match[0]);
+      issues = parsedResult.issues;
+      markdown = parsedResult.markdown || match[0];
+      text = parsedResult.text;
     }
-    match = splitRegex.exec(text);
+    result.push({ text, isCode, isCodeBlock, markdown, issues });
+    lastIndex = match.index + text.length;
+    match = splitRegex.exec(inputText);
   }
+  const substring = inputText.substring(lastIndex);
+  result.push({ text: substring, markdown: substring });
   return result;
+}
+
+export default function linkIssues(
+  jiraProjectKeys: string[],
+  baseUrl: string,
+  inputText: string
+): { issues: string[], newText: ?string } {
+  const parsedText = parseMarkdown(jiraProjectKeys, baseUrl, inputText);
+  return parsedText.reduce(
+    (result, { text, markdown, issues }, index) => {
+      if (issues && issues.length) {
+        result.issues = result.issues.concat(issues);
+      }
+      if (markdown) {
+        result.newText = `${
+          result.newText ? result.newText : result.text
+        }${markdown}`;
+      } else if (result.newText) {
+        result.newText += text;
+      }
+      result.text += text;
+      return result;
+    },
+    {
+      issues: [],
+      newText: null,
+      text: ''
+    }
+  );
 }

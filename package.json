@@ -13,7 +13,8 @@
     "test": "node scripts/test.js --coverage --env=jsdom",
     "test:watch": "node scripts/test.js --watch --env=jsdom",
     "release": "standard-version && git push --follow-tags origin master && conventional-github-releaser -p angular",
-    "format": "prettier --write \"src/**/*.js\" \"src/**/*.jsx\""
+    "format": "prettier --write \"src/**/*.js\" \"src/**/*.jsx\"",
+    "postinstall": "node scripts/fixDevTools.js"
   },
   "dependencies": {
     "@apollo/client": "3.2.1",

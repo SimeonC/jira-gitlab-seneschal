@@ -1,12 +1,43 @@
-import processWebhookMergeRequest from '../mergeRequest';
+import coreProcessWebhookMergeRequest from '../mergeRequest';
 
 let mockJiraRequest = jest.fn(() => Promise.reject());
+let mockSettingsRequest = jest.fn(() => Promise.resolve({}));
 
 jest.mock('../../apis/jira', () => ({
   jiraRequest: (jiraApi, method, url, body) => {
     return mockJiraRequest(method, url, body);
   }
 }));
+
+jest.mock('../settings', () => ({
+  getWebhookSettings: () => mockSettingsRequest()
+}));
+
+jest.mock('../sendDevInfo');
+
+function processWebhookMergeRequest(
+  jiraApi,
+  jiraAddon,
+  clientKey,
+  gitlabApi,
+  baseJiraUrl,
+  jiraProjectIds,
+  metadata,
+  response
+) {
+  return coreProcessWebhookMergeRequest(
+    jiraApi,
+    jiraAddon,
+    clientKey,
+    gitlabApi,
+    baseJiraUrl,
+    jiraProjectIds,
+    metadata,
+    response,
+    { object_attributes: {}, project: {} },
+    123456
+  );
+}
 
 describe('processWebhookMergeRequest', () => {
   let jiraProjectKey;
@@ -20,6 +51,7 @@ describe('processWebhookMergeRequest', () => {
   let gitlabApi;
 
   beforeEach(() => {
+    mockSettingsRequest = jest.fn(() => Promise.resolve({}));
     mockJiraRequest = jest.fn((method, url, body) => {
       if (url === transitionUrl && method === 'get') {
         return Promise.resolve({
@@ -67,7 +99,9 @@ describe('processWebhookMergeRequest', () => {
             description: 'description',
             title: 'title',
             state: 'opened',
-            web_url: 'http://web_url'
+            web_url: 'http://web_url',
+            author: {},
+            references: {}
           }),
         commits: () =>
           Promise.resolve([
@@ -76,12 +110,59 @@ describe('processWebhookMergeRequest', () => {
               message: `${transitionKeyword} ${issueKey}`
             }
           ]),
-        edit: () => Promise.resolve({})
+        edit: () => Promise.resolve({}),
+        approvalState: () => Promise.resolve({})
+      },
+      Users: {
+        show: () => Promise.resolve({}),
+        search: () => Promise.resolve(null),
+        current: () => Promise.resolve({ id: 'self' })
+      },
+      Commits: {
+        diff: () => Promise.resolve([]),
+        show: () => Promise.resolve({ title: '', message: '' })
       }
     };
   });
 
-  test('should replace existing description block', async () => {
+  test('should replace existing description block if different', async () => {
+    const metadata = {
+      transitionKeywords: [transitionKeyword],
+      transitionMap: [],
+      defaultTransitionMap: []
+    };
+    const description = `Adding support for the “phone” type field with correct validation and formatting.\n\nCompletes [TC-13](http://jira.com/browse/TC-13)\n\n<details>\n  <summary>All Jira Seneschal Links</summary>\n  \n  | Ticket | Title |\n  | --- | --- |\n  | [${issueKey}](http://jira.com/browse/${issueKey}) | Summary for TC-13 |\n</details>\n\n`;
+    gitlabApi.MergeRequests.show = () =>
+      Promise.resolve({
+        id: 'testid',
+        description,
+        title: 'title',
+        state: 'opened',
+        web_url: 'http://web_url',
+        author: {},
+        references: {}
+      });
+    gitlabApi.MergeRequests.edit = jest.fn(() => Promise.resolve({}));
+    await processWebhookMergeRequest(
+      {},
+      {},
+      'client-key',
+      gitlabApi,
+      'http://jira.com',
+      jiraProjectIds,
+      metadata,
+      response
+    );
+    expect(gitlabApi.MergeRequests.edit).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+      {
+        description: `Adding support for the “phone” type field with correct validation and formatting.\n\nCompletes [TC-13](http://jira.com/browse/TC-13)\n\n<details>\n  <summary>All Jira Seneschal Links</summary>\n  \n  | Ticket | Title |\n  | --- | --- |\n  | [TC-13](http://jira.com/browse/TC-13) | Summary for TC-13 |\n  | [${issueKey}](http://jira.com/browse/${issueKey}) | Summary for ${issueKey} |\n</details>\n\n`
+      }
+    );
+  });
+
+  test('should not update for no changes', async () => {
     const metadata = {
       transitionKeywords: [transitionKeyword],
       transitionMap: [],
@@ -94,24 +175,22 @@ describe('processWebhookMergeRequest', () => {
         description,
         title: 'title',
         state: 'opened',
-        web_url: 'http://web_url'
+        web_url: 'http://web_url',
+        author: {},
+        references: {}
       });
     gitlabApi.MergeRequests.edit = jest.fn(() => Promise.resolve({}));
     await processWebhookMergeRequest(
       {},
+      {},
+      'client-key',
       gitlabApi,
       'http://jira.com',
       jiraProjectIds,
       metadata,
       response
     );
-    expect(gitlabApi.MergeRequests.edit).toHaveBeenCalledWith(
-      undefined,
-      undefined,
-      {
-        description
-      }
-    );
+    expect(gitlabApi.MergeRequests.edit).not.toHaveBeenCalled();
   });
 
   test('should correctly get map and trigger transition', async () => {
@@ -127,6 +206,57 @@ describe('processWebhookMergeRequest', () => {
     };
     await processWebhookMergeRequest(
       {},
+      {},
+      'client-key',
+      gitlabApi,
+      'http://jira.com',
+      jiraProjectIds,
+      metadata,
+      response
+    );
+    expect(mockJiraRequest).toHaveBeenCalledWith('post', transitionUrl, {
+      transition: { id: transitionId }
+    });
+  });
+
+  test('should correctly get map and trigger transition from description with setting', async () => {
+    mockSettingsRequest = jest.fn(() =>
+      Promise.resolve({
+        useDescriptionTransitions: true
+      })
+    );
+    const description = `Adding support for the “phone” type field with correct validation and formatting.\n\nCompletes [${issueKey}](http://jira.com/browse/${issueKey})\n\n<details>\n  <summary>All Jira Seneschal Links</summary>\n  \n  | Ticket | Title |\n  | --- | --- |\n  | [${issueKey}](http://jira.com/browse/${issueKey}) | Summary for ${issueKey} |\n</details>\n\n`;
+    gitlabApi.MergeRequests.show = () =>
+      Promise.resolve({
+        id: 'testid',
+        description,
+        title: 'title',
+        state: 'opened',
+        web_url: 'http://web_url',
+        author: {},
+        references: {}
+      });
+    gitlabApi.MergeRequests.commits = () =>
+      Promise.resolve([
+        {
+          title: 'commit title',
+          message: `Some other commit message`
+        }
+      ]);
+    const metadata = {
+      transitionKeywords: ['Completes'],
+      transitionMap: [
+        {
+          jiraProjectKey,
+          openStatusIds: [testTransitionStatusToId]
+        }
+      ],
+      defaultTransitionMap: []
+    };
+    await processWebhookMergeRequest(
+      {},
+      {},
+      'client-key',
       gitlabApi,
       'http://jira.com',
       jiraProjectIds,
@@ -155,6 +285,8 @@ describe('processWebhookMergeRequest', () => {
     };
     await processWebhookMergeRequest(
       {},
+      {},
+      'client-key',
       gitlabApi,
       'http://jira.com',
       jiraProjectIds,
@@ -178,6 +310,8 @@ describe('processWebhookMergeRequest', () => {
     };
     await processWebhookMergeRequest(
       {},
+      {},
+      'client-key',
       gitlabApi,
       'http://jira.com',
       jiraProjectIds,
@@ -216,6 +350,8 @@ describe('processWebhookMergeRequest', () => {
     };
     await processWebhookMergeRequest(
       {},
+      {},
+      'client-key',
       gitlabApi,
       'http://jira.com',
       jiraProjectIds,
@@ -244,6 +380,8 @@ describe('processWebhookMergeRequest', () => {
     };
     await processWebhookMergeRequest(
       {},
+      {},
+      'client-key',
       gitlabApi,
       'http://jira.com',
       jiraProjectIds,

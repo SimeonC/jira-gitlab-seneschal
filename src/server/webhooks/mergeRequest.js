@@ -6,59 +6,9 @@ import { jiraRequest } from '../apis/jira';
 import linkIssues from './linkIssues';
 import type { WebhookMetadataType } from '../apis/webhooks.types';
 import sendDevInfo from './sendDevInfo';
-
-function extractTickets(regex: string, search: string) {
-  const tickets = [];
-  const regexp = new RegExp(regex, 'ig');
-  let currentMatch;
-  while ((currentMatch = regexp.exec(search))) {
-    tickets.push(currentMatch[1]);
-  }
-  return tickets;
-}
-
-export function processCommits(
-  transitionKeywords: string[],
-  jiraProjectKeys: string[],
-  commits: { title: string, message: string }[]
-): { issueKey: string, shouldTransition: boolean }[] {
-  const looseMatchRegexString = `((?:${transitionKeywords.join(
-    '|'
-  )}|,| and )[ ])*((?:(?:(?:${jiraProjectKeys.join(
-    '|'
-  )})-[1-9][0-9]*)(?:|(?:,| and) )+)+)`;
-  const ticketMatchRegexString = `(?:^|\\s)((?:${jiraProjectKeys.join(
-    '|'
-  )})-[1-9][0-9]*)`;
-  const issueMatches = commits.reduce(
-    (matches: { [string]: boolean }, commit) => {
-      let currentMatch;
-      const regexp = new RegExp(looseMatchRegexString, 'ig');
-      while ((currentMatch = regexp.exec(commit.title))) {
-        const isTransition = Boolean(currentMatch[1]);
-        extractTickets(ticketMatchRegexString, currentMatch[2]).forEach(
-          (ticketKey) => {
-            matches[ticketKey] = matches[ticketKey] || isTransition;
-          }
-        );
-      }
-      while ((currentMatch = regexp.exec(commit.message))) {
-        const isTransition = Boolean(currentMatch[1]);
-        extractTickets(ticketMatchRegexString, currentMatch[2]).forEach(
-          (ticketKey) => {
-            matches[ticketKey] = matches[ticketKey] || isTransition;
-          }
-        );
-      }
-      return matches;
-    },
-    {}
-  );
-  return Object.keys(issueMatches).map((key) => ({
-    issueKey: key,
-    shouldTransition: issueMatches[key]
-  }));
-}
+import { getWebhookSettings } from './settings';
+import { processCommitsForJiraDevInfo, processCommits } from './commits';
+import { parseMarkdown } from './linkIssues';
 
 export const jiraIssueGlancePropertyKey =
   'com.atlassian.jira.issue:gitlab-seneschal:gitlab-seneshal-merge-requests-glance:status';
@@ -126,7 +76,8 @@ async function buildGitlabLinksSummary(
   jiraApi: *,
   baseUrl: string,
   issueKeys: string[]
-) {
+): Promise<string> {
+  if (issueKeys.length === 0) return '';
   const issueData = await jiraRequest(
     jiraApi,
     'get',
@@ -156,33 +107,27 @@ export default async function processWebhookMergeRequest(
   hookData?: * = {},
   queueElementId: number
 ) {
+  const settings = await getWebhookSettings(jiraAddon, clientKey);
+  const { enableUpdateOnEdits, useDescriptionTransitions } = Object.keys(
+    settings
+  ).reduce((result, key) => {
+    result[key] = settings[key];
+    if (result[key] === 'true') result[key] = true;
+    if (result[key] === 'false') result[key] = false;
+    return result;
+  }, {});
   const { changes } = hookData;
-  let wasWip = false;
   let isWip = false;
   if (changes && changes.title) {
     const wipRegExp = /^WIP:/;
-    wasWip = wipRegExp.test(changes.title.previous);
     isWip = wipRegExp.test(changes.title.current);
   }
-  if (
-    !(
-      response.action === 'merge' ||
-      response.action === 'open' ||
-      response.action === 'reopen' ||
-      response.action === 'close'
-    ) &&
-    wasWip === isWip
-  )
-    return;
   const action = response.action === 'reopen' ? 'open' : response.action;
   const mrData = await gitlabApi.MergeRequests.show(
     response.projectId,
     response.mergeRequestId
   );
   const { id, description, title, state, web_url: mergeRequestUrl } = mrData;
-  if (isWip !== wasWip && state !== 'opened' && response.action === 'update') {
-    return;
-  }
   const commits = await gitlabApi.MergeRequests.commits(
     response.projectId,
     response.mergeRequestId
@@ -194,9 +139,32 @@ export default async function processWebhookMergeRequest(
     commits
   );
 
+  if (useDescriptionTransitions) {
+    commitIssues.push(
+      ...processCommits(transitionKeywords, jiraProjectIds, [
+        {
+          title,
+          message: parseMarkdown(jiraProjectIds, baseJiraUrl, description)
+            .map(({ text }) => text)
+            .join('')
+        }
+      ])
+    );
+  }
+
+  const seneschalUser = await gitlabApi.Users.current();
+  if (
+    action === 'update' &&
+    (!enableUpdateOnEdits ||
+      hookData.object_attributes.last_edited_by_id === seneschalUser.id)
+  ) {
+    return;
+  }
+
   if (action !== 'update') {
-    const issuesToTransition = commitIssues.filter(
-      (commitIssue) => commitIssue.shouldTransition
+    const issuesToTransition = uniqBy(
+      commitIssues.filter((commitIssue) => commitIssue.shouldTransition),
+      ({ issueKey }) => issueKey
     );
     await Promise.all(
       issuesToTransition.map(async ({ issueKey }) => {
@@ -299,35 +267,32 @@ export default async function processWebhookMergeRequest(
       )
   );
 
-  if (action !== 'update') {
-    const newSummary = await buildGitlabLinksSummary(
-      jiraApi,
-      baseJiraUrl,
-      textIssues.concat(commitIssues.map((val) => val.issueKey))
-    );
+  const newSummary = await buildGitlabLinksSummary(
+    jiraApi,
+    baseJiraUrl,
+    textIssues.concat(commitIssues.map((val) => val.issueKey))
+  );
 
-    let newMergeRequestDescription;
-    const replacementRegexp = new RegExp(
-      `<details>[^<]+${gitlabJiraLinksHeaderRegexp}[^<]+<\\/details>`,
-      'mig'
+  let newMergeRequestDescription;
+  const replacementRegexp = new RegExp(
+    `<details>[^<]+${gitlabJiraLinksHeaderRegexp}[^<]+<\\/details>`,
+    'mig'
+  );
+  if (newText && newText.match(replacementRegexp)) {
+    newMergeRequestDescription = newText.replace(replacementRegexp, newSummary);
+  } else if (
+    !newText &&
+    new RegExp(gitlabJiraLinksHeaderRegexp).test(description)
+  ) {
+    newMergeRequestDescription = description.replace(
+      replacementRegexp,
+      newSummary
     );
-    if (newText && newText.match(replacementRegexp)) {
-      newMergeRequestDescription = newText.replace(
-        replacementRegexp,
-        newSummary
-      );
-    } else if (
-      !newText &&
-      new RegExp(gitlabJiraLinksHeaderRegexp).test(description)
-    ) {
-      newMergeRequestDescription = description.replace(
-        replacementRegexp,
-        newSummary
-      );
-    } else {
-      newMergeRequestDescription = `${newText || description}\n\n${newSummary}`;
-    }
+  } else {
+    newMergeRequestDescription = `${newText || description}\n\n${newSummary}`;
+  }
 
+  if (newMergeRequestDescription.trim() !== description.trim()) {
     await gitlabApi.MergeRequests.edit(
       response.projectId,
       response.mergeRequestId,
@@ -375,67 +340,19 @@ export default async function processWebhookMergeRequest(
     response.mergeRequestId
   );
 
+  const devInfoCommits = await processCommitsForJiraDevInfo(
+    gitlabApi,
+    updateSequenceId,
+    metadata,
+    jiraProjectIds,
+    hookData.project,
+    commits
+  );
+
   await sendDevInfo(jiraAddon, clientKey, baseJiraUrl, {
     updateSequenceId,
     project: hookData.project,
-    commits: await commits.reduce(async (linkedCommits, commit) => {
-      const thisCommitIssues = processCommits(
-        transitionKeywords,
-        jiraProjectIds,
-        [commit]
-      );
-      if (thisCommitIssues.length) {
-        const diffs = await gitlabApi.Commits.diff(
-          hookData.project.id,
-          commit.id
-        );
-        linkedCommits.push({
-          id: commit.id,
-          issueKeys: thisCommitIssues.map((i) => i.issueKey),
-          updateSequenceId,
-          hash: commit.id,
-          message: commit.message,
-          author: {
-            name: commit.author_name,
-            email: commit.author_email
-          },
-          fileCount: diffs.length,
-          url: `${hookData.project.web_url}/commits/${commit.id}`,
-          files: diffs.map((diff) => ({
-            path: diff.new_path,
-            url: `${hookData.project.web_url}/blob/${commit.id}/${
-              diff.new_path || diff.old_path
-            }`,
-            changeType:
-              diff.new_file && diff.old_path
-                ? 'COPIED'
-                : diff.new_file
-                ? 'ADDED'
-                : diff.renamed_file
-                ? 'MOVED'
-                : diff.deleted_file
-                ? 'DELETED'
-                : diff.new_path !== diff.old_path
-                ? 'MOVED'
-                : 'MODIFIED',
-            ...diff.diff
-              .replace(/@@/gi, '\n@@')
-              .split('\n')
-              .reduce(
-                (result, string) => {
-                  if (string[0] === '-') result.linesRemoved += 1;
-                  else if (string[0] === '+') result.linesAdded += 1;
-                  return result;
-                },
-                { linesRemoved: 0, linesAdded: 0 }
-              )
-          })),
-          authorTimestamp: commit.created_at,
-          displayId: commit.short_id
-        });
-      }
-      return linkedCommits;
-    }, []),
+    commits: devInfoCommits,
     branches: [],
     pullRequests: [
       {

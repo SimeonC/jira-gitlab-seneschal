@@ -702,6 +702,7 @@ export default function (addon: *) {
       deleteWebhookFailure,
       deleteAllWebhookFailures,
       setWebhookSetting,
+      setProjectWebhookSetting: setWebhookSetting,
       deleteWebhookSetting
     }
   });

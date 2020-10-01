@@ -9,6 +9,7 @@ import { WEBHOOK_TYPES } from '../apis/webhooks.types';
 import processWebhookComment from './comments';
 import { jiraRequest } from '../apis/jira';
 import processWebhookMergeRequest from './mergeRequest';
+import { processPush } from './push';
 
 export type WebhookProcessResponseType = {
   projectId: string,
@@ -51,7 +52,6 @@ async function processElement(
     jiraAddon.schema.models,
     clientKey
   );
-  console.log('metadata for', clientKey, webhookMetadata);
   const { baseUrl } = await jiraAddon.settings.get('clientInfo', clientKey);
   const jiraApi = jiraAddon.httpClient({ clientKey });
 
@@ -69,7 +69,6 @@ async function processElement(
   switch (queueElement.body.object_kind) {
     case WEBHOOK_TYPES.COMMENTS:
       processMetadata = await processWebhookComment(
-        jiraApi,
         gitlabApiInstance,
         baseUrl,
         jiraProjectKeys,
@@ -93,6 +92,18 @@ async function processElement(
         jiraProjectKeys,
         webhookMetadata,
         processMetadata,
+        queueElement.body,
+        queueElement.id
+      );
+      break;
+    case WEBHOOK_TYPES.PUSH:
+      await processPush(
+        jiraAddon,
+        clientKey,
+        gitlabApiInstance,
+        baseUrl,
+        jiraProjectKeys,
+        webhookMetadata,
         queueElement.body,
         queueElement.id
       );
@@ -141,10 +152,20 @@ export async function processQueue(jiraAddon: *) {
       );
     } catch (error) {
       console.error(error);
+      let data;
+      if (error.response) {
+        try {
+          data = JSON.stringify(error.response.data);
+        } catch (error) {}
+      }
       try {
         await database.WebhookFailures.create({
           original: nextQueueItem,
-          error: { message: error.toString(), details: JSON.stringify(error) }
+          error: {
+            message: error.toString(),
+            details: JSON.stringify(error),
+            data
+          }
         });
         const {
           web_url,

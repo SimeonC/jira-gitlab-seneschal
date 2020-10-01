@@ -57,8 +57,16 @@ type DevToolsStatus {
   status: String
 }
 
-type Transitions {
+type WebhookSettings {
   autoAdd: String
+  enableUpdateOnEdits: String
+  useDescriptionTransitions: String
+}
+
+type ProjectWebhookSettings {
+  projectKey: String!
+  projectName: String!
+  useDescriptionTransitions: String
 }
 
 type Queries {
@@ -91,7 +99,10 @@ type Queries {
   getProjectWebhookTransitionMap(jiraProjectId: String!): WebhookTransitionMap!
   webhooks: [WebhookStatus!]!
   webhookErrors(pageSize: Int, pageOffset: Int): PaginatedWebhookErrors
-  getWebhookSettings: Transitions
+  getWebhookSettings(
+    jiraProjectId: String
+    gitlabProjectId: String
+  ): WebhookSettings
 }
 
 type Mutations {
@@ -151,7 +162,17 @@ type Mutations {
   deleteWebhookFailure(id: String!): SuccessResponse
   deleteAllWebhookFailures: SuccessResponse
   setWebhookSetting(key: String!, value: String!): SuccessResponse
-  deleteWebhookSetting(key: String!): SuccessResponse
+  setProjectWebhookSetting(
+    key: String!
+    value: String!
+    jiraProjectId: String
+    gitlabProjectId: String
+  ): SuccessResponse
+  deleteWebhookSetting(
+    key: String!
+    jiraProjectId: String
+    gitlabProjectId: String
+  ): SuccessResponse
 }
 
 schema {

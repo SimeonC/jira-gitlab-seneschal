@@ -1,78 +1,76 @@
 {
-    // This is the default environment. To change your app to use
-    // a different env, set NODE_ENV (http://expressjs.com/api.html#app.configure)
-    "development": {
-        // This is the port your Express server will listen on
-        "port": 8080,
-        //Use 'unauthorized.hbs' template for displaying an error page
-        "errorTemplate": true,
-        // atlassian-connect-express currently integrates with Sequelize for
-        // persistence to store the host client information (i.e., client key,
-        // host public key, etc). When no adapter is specified, it defaults to
-        // Sequelize's fallback memory storage.
-        //
-        // To specify a backend for Sequelize  other than "memory", set the
-        // "dialect" value to one of Sequelize's other supported dialects.
-        //
-        // To use your own storage adapter, add the key
-        // "adapter" to the following configuration, and replace "dialect"
-        // and "connection" with any values your adapter expects.  Then make sure
-        // that you register your adapter factory with the following code in
-        // app.js:
-        //
-        //   ac.store.register(adapterName, factoryFn)
-        //
-        // See `atlassian-connect-express/lib/store/index.js` and the default
-        // `sequelize.js` files for code demonstrating how to write a
-        // conformant adapter.  The default values are as follows:
-        //
-        //   "store": {
-        //     "adapter": "sequelize",
-        //     "dialect": "sqlite3",
-        //     "storage": ":memory:"
-        //   },
-        //
-        // To instead configure, say, a PostgreSQL store, the following could be
-        // used:
-        //
-        //   "store": {
-        //     "adapter": "sequelize",
-        //     "dialect": "postgres",
-        //     "url": "postgres://localhost/my_addon_database"
-        //   },
-        //
-        // You will also need an appropriate Sequelize driver if you choose something
-        // other than the default "dialect".  In the PostgreSQL case you'd need to
-        // run the following command to add the proper support:
-        //
-        //   $ npm install --save pg
-        "store": {
-            "type": "postgres",
-            "url": "postgres://localhost:5432/jira-gitlab-seneschal"
-        },
-        "CREDENTIAL_ENCRYPTION_KEY": "put-your-key-here-thats-32-chars"
+  // This is the default environment. To change your app to use
+  // a different env, set NODE_ENV (http://expressjs.com/api.html#app.configure)
+  "development": {
+    // This is the port your Express server will listen on
+    "port": 8080,
+    //Use 'unauthorized.hbs' template for displaying an error page
+    "errorTemplate": true,
+    // atlassian-connect-express currently integrates with Sequelize for
+    // persistence to store the host client information (i.e., client key,
+    // host public key, etc). When no adapter is specified, it defaults to
+    // Sequelize's fallback memory storage.
+    //
+    // To specify a backend for Sequelize  other than "memory", set the
+    // "dialect" value to one of Sequelize's other supported dialects.
+    //
+    // To use your own storage adapter, add the key
+    // "adapter" to the following configuration, and replace "dialect"
+    // and "connection" with any values your adapter expects.  Then make sure
+    // that you register your adapter factory with the following code in
+    // app.js:
+    //
+    //   ac.store.register(adapterName, factoryFn)
+    //
+    // See `atlassian-connect-express/lib/store/index.js` and the default
+    // `sequelize.js` files for code demonstrating how to write a
+    // conformant adapter.  The default values are as follows:
+    //
+    //   "store": {
+    //     "adapter": "sequelize",
+    //     "dialect": "sqlite3",
+    //     "storage": ":memory:"
+    //   },
+    //
+    // To instead configure, say, a PostgreSQL store, the following could be
+    // used:
+    //
+    //   "store": {
+    //     "adapter": "sequelize",
+    //     "dialect": "postgres",
+    //     "url": "postgres://localhost/my_addon_database"
+    //   },
+    //
+    // You will also need an appropriate Sequelize driver if you choose something
+    // other than the default "dialect".  In the PostgreSQL case you'd need to
+    // run the following command to add the proper support:
+    //
+    //   $ npm install --save pg
+    "store": {
+      "type": "postgres",
+      "url": "postgres://postgres:seneschal-dev-password@localhost:5432/jira-gitlab-seneschal"
     },
-    // This is the production add-on configuration, which is enabled by setting
-    // the NODE_ENV=production environment variable.
-    "production": {
-        // On a PaaS host like Heroku, the runtime environment will provide the
-        // HTTP port to you via the PORT environement variable, so we configure
-        // that to be honored here.
-        "port": "$PORT",
-        //Use 'unauthorized.hbs' template for displaying an error page
-        "errorTemplate": true,
-        // This is the public URL to your production add-on.
-        "localBaseUrl": "$APP_URL",
-        "store": {
-            "type": "postgres",
-            "url": "$DATABASE_URL"
-        },
-        // As this is not designed to be multitenanted - make the env var point to _your_
-        // Jira instance(s). Can take wildcards like *.atlassian.net
-        "whitelist": [
-            "$JIRA_HOST"
-        ],
-        "CREDENTIAL_ENCRYPTION_KEY": "$CREDENTIAL_ENCRYPTION_KEY"
+    "CREDENTIAL_ENCRYPTION_KEY": "put-your-key-here-thats-32-chars"
+  },
+  // This is the production add-on configuration, which is enabled by setting
+  // the NODE_ENV=production environment variable.
+  "production": {
+    // On a PaaS host like Heroku, the runtime environment will provide the
+    // HTTP port to you via the PORT environement variable, so we configure
+    // that to be honored here.
+    "port": "$PORT",
+    //Use 'unauthorized.hbs' template for displaying an error page
+    "errorTemplate": true,
+    // This is the public URL to your production add-on.
+    "localBaseUrl": "$APP_URL",
+    "store": {
+      "type": "postgres",
+      "url": "$DATABASE_URL"
     },
-    "product": "jira"
+    // As this is not designed to be multitenanted - make the env var point to _your_
+    // Jira instance(s). Can take wildcards like *.atlassian.net
+    "whitelist": ["$JIRA_HOST"],
+    "CREDENTIAL_ENCRYPTION_KEY": "$CREDENTIAL_ENCRYPTION_KEY"
+  },
+  "product": "jira"
 }

@@ -30,7 +30,19 @@ The transitions scripts require you to enable "All statuses can transition to '.
 First time you run this product you need to update `config.json` to complete your own setup.
 This is a requirement for creating your own private add-on.
 
-Also you will need a local copy of PostgresSQL setup, the default database used in dev is `gitlab-jira-seneschal` so make sure that exists.
+Also you will need a local copy of PostgresSQL setup, the default database used in dev is `jira-gitlab-seneschal` so make sure that exists.
+
+I recommend using docker and these commands;
+
+`docker run --name some-postgres -e POSTGRES_PASSWORD=seneschal-dev-password -p 5432:5432 -d postgres`
+
+Then in the docker container run the following commands; (use the last command to confirm you have created the db correctly).
+
+```
+> psql -U postgres
+> CREATE DATABASE "jira-gitlab-seneschal";
+> \l
+```
 
 If you are running in dev mode follow the instructions for "The Dev Loop" here; https://bitbucket.org/atlassian/atlassian-connect-express
 

@@ -3,7 +3,9 @@ export type WebhookType = $Values<typeof WEBHOOK_TYPES>;
 
 export const WEBHOOK_TYPES = {
   COMMENTS: 'note',
-  MERGE_REQUESTS: 'merge_request'
+  MERGE_REQUESTS: 'merge_request',
+  PUSH: 'push',
+  TAG: 'tag_push'
 };
 export const WEBHOOK_TYPE_KEYS: string[] = Object.keys(WEBHOOK_TYPES).map(
   (key) => WEBHOOK_TYPES[key]

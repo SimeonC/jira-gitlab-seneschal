@@ -1,5 +1,5 @@
 import cases from 'jest-in-case';
-import { processCommits } from '../mergeRequest';
+import { processCommits } from '../commits';
 
 const transitionKeywords = ['fix', 'fixes', 'fixed'];
 const projectKeys = ['TC', 'NAS'];
@@ -76,7 +76,8 @@ cases(
       name: 'combinations of stuff',
       commits: [
         'NAS-2, TC-3 and BOT-3 did something, FIXES TC-12, NAS-42 AND TC-14',
-        'NAS-2 did something else and Fixes TC-8 and NAS-42'
+        'NAS-2 did something else and Fixes TC-8 and NAS-42',
+        'We did a bunch of things\nfixes TC-9 TC-10  & NAS-43'
       ],
       results: [
         { issueKey: 'NAS-2', shouldTransition: false },
@@ -84,7 +85,10 @@ cases(
         { issueKey: 'TC-12', shouldTransition: true },
         { issueKey: 'NAS-42', shouldTransition: true },
         { issueKey: 'TC-14', shouldTransition: true },
-        { issueKey: 'TC-8', shouldTransition: true }
+        { issueKey: 'TC-8', shouldTransition: true },
+        { issueKey: 'TC-9', shouldTransition: true },
+        { issueKey: 'TC-10', shouldTransition: true },
+        { issueKey: 'NAS-43', shouldTransition: true }
       ]
     }
   ]

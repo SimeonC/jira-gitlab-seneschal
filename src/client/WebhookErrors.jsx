@@ -198,7 +198,6 @@ class WebhookErrors extends Component<
 
   render() {
     const { rows, isLoading, page, pages } = this.state;
-    console.log('[debug]', pages);
     return (
       <Page>
         <GridColumn>

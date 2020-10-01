@@ -3,13 +3,12 @@ import type { WebhookProcessResponseType } from './queue';
 import linkIssues from './linkIssues';
 
 export default async function processWebhookComment(
-  jiraApi: *,
   gitlabApi: *,
   baseUrl: string,
   jiraProjectIds: string[],
   commentBody: *
 ): ?WebhookProcessResponseType {
-  const { id, note, noteable_type: type } = commentBody.object_attributes;
+  const { id, note = '', noteable_type: type } = commentBody.object_attributes;
   // $FlowFixMe Async Promise/Object type conflict
   if (type !== 'MergeRequest') return null;
 
@@ -22,7 +21,7 @@ export default async function processWebhookComment(
     issues
   };
 
-  if (newText) {
+  if (newText && newText.trim() !== note.trim()) {
     await gitlabApi.MergeRequestNotes.edit(
       metadata.projectId,
       metadata.mergeRequestId,
