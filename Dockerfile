@@ -2,13 +2,13 @@ FROM node:12.18.3 as builder
 
 WORKDIR /usr/src/app
 
-ENV NODE_ENV production
-
 COPY package*.json ./
 
 RUN npm install
 
 COPY . .
+
+ENV NODE_ENV production
 
 RUN npm run-script build
 
