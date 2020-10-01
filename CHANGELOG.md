@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.6.0](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.5.0...v2.6.0) (2020-10-01)
+
+
+### Features
+
+* add more transition detection options ([6e76921](https://github.com/SimeonC/jira-gitlab-seneschal/commit/6e7692174ccbf8cb2b061e157db341a6dc8713e5)), closes [#30](https://github.com/SimeonC/jira-gitlab-seneschal/issues/30)
+* auto-update webhooks logic ([e26f24c](https://github.com/SimeonC/jira-gitlab-seneschal/commit/e26f24cfd48a3d7fc13419d6c1eeac491eced90b)), closes [#29](https://github.com/SimeonC/jira-gitlab-seneschal/issues/29)
+* handle jira and gitlab project changes ([ee8e6db](https://github.com/SimeonC/jira-gitlab-seneschal/commit/ee8e6dba3585e72d64ae8c0e5ea112c7f38cbe84)), closes [#31](https://github.com/SimeonC/jira-gitlab-seneschal/issues/31)
+
+
+### Bug Fixes
+
+* recent bugs and gitlab update issues ([6196921](https://github.com/SimeonC/jira-gitlab-seneschal/commit/6196921f22878cd39db01d51ee28ce67d8cc6a7d))
+
 ## [2.5.0](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.4.2...v2.5.0) (2020-06-05)
 
 ### Features
