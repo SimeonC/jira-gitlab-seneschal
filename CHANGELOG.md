@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.6.1](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.6.0...v2.6.1) (2020-10-01)
+
+
+### Bug Fixes
+
+* build ([68cf73c](https://github.com/SimeonC/jira-gitlab-seneschal/commit/68cf73c4bf46ee2403028f6ba01bbc140f597175))
+
 ## [2.6.0](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.5.0...v2.6.0) (2020-10-01)
 
 
