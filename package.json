@@ -6,7 +6,7 @@
     "start": "node build/server/index.js",
     "start:dev": "AC_OPTS=force-dereg,force-reg nodemon --exec babel-node -- src/server/index.js",
     "build:client": "node scripts/build.js",
-    "build:server": "babel --config -d ./build/server ./src/server -s && rm ./build/server/migrations/*.map",
+    "build:server": "babel -s -d ./build/server ./src/server && babel --source-root ./src/server -s -d ./build ./src/frontendPages.js && rm ./build/server/migrations/*.map",
     "build": "npm run build:client && npm run build:server",
     "migrate": "sequelize db:migrate",
     "migrate:undo": "sequelize db:migrate:undo",
