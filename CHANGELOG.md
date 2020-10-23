@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.6.4](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.6.3...v2.6.4) (2020-10-23)
+
+
+### Bug Fixes
+
+* **migrations:** correctly handle when jira project has been deleted ([2f20bcf](https://github.com/SimeonC/jira-gitlab-seneschal/commit/2f20bcf7a060ff65376ded52554ed757ac03892b))
+
 ### [2.6.3](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.6.2...v2.6.3) (2020-10-19)
 
 
