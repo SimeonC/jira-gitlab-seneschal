@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.6.5](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.6.4...v2.6.5) (2020-10-23)
+
+
+### Bug Fixes
+
+* **server:** correctly reference client files ([c558037](https://github.com/SimeonC/jira-gitlab-seneschal/commit/c558037130be48698125b781362eedd2dd414417))
+
 ### [2.6.4](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.6.3...v2.6.4) (2020-10-23)
 
 
