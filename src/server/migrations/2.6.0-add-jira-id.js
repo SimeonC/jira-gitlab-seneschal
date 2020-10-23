@@ -19,14 +19,25 @@ module.exports = {
     await Promise.all(
       allMaps.map(async ({ jiraProjectKey, clientKey }) => {
         const jiraApi = jiraAddon.httpClient({ clientKey });
-        const jiraProject = await jiraRequest(
-          jiraApi,
-          'get',
-          `/project/${jiraProjectKey}`
-        );
-        await queryInterface.sequelize.query(`
-        UPDATE "WebhookTransitionMaps" SET "jiraProjectId" = ${jiraProject.id} WHERE "jiraProjectKey" = '${jiraProjectKey}'
-      `);
+        let jiraProject;
+        try {
+          jiraProject = await jiraRequest(
+            jiraApi,
+            'get',
+            `/project/${jiraProjectKey}`
+          );
+        } catch (e) {
+          // project doesn't exist
+        }
+        if (jiraProject) {
+          await queryInterface.sequelize.query(`
+            UPDATE "WebhookTransitionMaps" SET "jiraProjectId" = ${jiraProject.id} WHERE "jiraProjectKey" = '${jiraProjectKey}'
+          `);
+        } else {
+          await queryInterface.sequelize.query(`
+            DELETE FROM "WebhookTransitionMaps" WHERE "jiraProjectKey" = '${jiraProjectKey}'
+          `);
+        }
       })
     );
     await queryInterface.sequelize.query(`
