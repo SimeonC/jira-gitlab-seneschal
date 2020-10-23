@@ -126,7 +126,7 @@ if (devEnv) {
   app.use(hotware(compiler));
 } else {
   // Enable static resource fingerprinting for far future expires caching in production
-  app.use(express.static(path.join(__dirname, '../../build/client')));
+  app.use(express.static(path.join(__dirname, '../client')));
 
   function serveFrontendRequest(content) {
     return (req, res) => {
@@ -136,7 +136,7 @@ if (devEnv) {
 
   frontendPages.forEach((page) => {
     const fileContent = fs.readFileSync(
-      path.join(__dirname, '../../build/client', `${page}.html`)
+      path.join(__dirname, '../client', `${page}.html`)
     );
     app.get(
       `/${page}`,
