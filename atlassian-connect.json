@@ -1,5 +1,5 @@
 {
-  "key": "gitlab-seneschal-link",
+  "key": "gitlab-seneschal",
   "name": "GitLab Seneschal",
   "description": "Add on to help migrate from and maintain a GitLab/Jira setup",
   "vendor": {
