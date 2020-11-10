@@ -138,7 +138,7 @@ export default function (addon: *) {
     const keys = await new Promise((resolve, reject) => {
       addon.httpClient(req).get(
         {
-          uri: `/rest/atlassian-connect/1/addons/gitlab-seneschal/properties`
+          uri: `/rest/atlassian-connect/1/addons/gitlab-seneschal-link/properties`
         },
         (err, res, body) => {
           if (err) reject(err);
@@ -194,7 +194,7 @@ export default function (addon: *) {
     return await new Promise((resolve, reject) => {
       addon.httpClient(req).put(
         {
-          uri: `/rest/atlassian-connect/1/addons/gitlab-seneschal/properties/${params.key}`,
+          uri: `/rest/atlassian-connect/1/addons/gitlab-seneschal-link/properties/${params.key}`,
           body: params.value,
           json: true
         },

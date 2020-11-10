@@ -17,6 +17,7 @@ const SETTINGS_QUERY = gql`
 `;
 
 function SettingRow({ data, id: key }: *) {
+  if (!data) return null;
   const [setSetting, { loading: isSaving }] = useMutation(gql`
     mutation SetAppSetting($key: String!, $value: String!) {
       setAppSetting(key: $key, value: $value) {
