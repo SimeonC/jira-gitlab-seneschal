@@ -136,7 +136,8 @@ if (devEnv) {
 
   frontendPages.forEach((page) => {
     const fileContent = fs.readFileSync(
-      path.join(__dirname, '../client', `${page}.html`)
+      path.join(__dirname, '../client', `${page}.html`),
+      'utf8'
     );
     app.get(
       `/${page}`,

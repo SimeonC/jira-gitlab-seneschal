@@ -9,6 +9,8 @@ async function gitlabApi(jiraAddon: *, clientKey: string) {
     jiraAddon,
     `${clientKey}_gitlab`
   ): any);
+  if (!credential)
+    throw new Error(`${clientKey} has not been setup with gitlab credentials`);
   return new Gitlab({
     host: credential.appUrl,
     token: credential.token

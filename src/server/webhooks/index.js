@@ -91,6 +91,7 @@ export async function createWebhooks(
   const { web_url, name_with_namespace } = await gitlab.Projects.show(
     gitlabProjectId
   );
+  console.log(`Creating Webhook for project ${name_with_namespace}`);
   await registerProject(
     database,
     gitlabProjectId,
@@ -148,6 +149,7 @@ async function checkWebhook(jiraAddon: *, client: *) {
   const { url: gitlabUrl } = parseProjectProps({
     url: gitlabProjectUrl
   });
+  console.log(`Checking Webhooks in project ${gitlabName}`);
   if (
     !outOfDate &&
     gitlabName === name &&
@@ -264,6 +266,7 @@ async function checkForNewProjects(jiraAddon) {
 }
 
 export async function runWebhookChecks(jiraAddon: *) {
+  console.log('Running Webhook Checks');
   await Promise.all([
     checkExistingWebhooks(jiraAddon),
     checkForNewProjects(jiraAddon)
@@ -272,7 +275,10 @@ export async function runWebhookChecks(jiraAddon: *) {
 
 function scheduleCheck(jiraAddon) {
   setTimeout(() => {
-    runWebhookChecks(jiraAddon);
+    runWebhookChecks(jiraAddon).catch((error) => {
+      console.error('Run Webhook Checks Error');
+      console.error(error);
+    });
     scheduleCheck(jiraAddon);
     // run every 24 hours
   }, 1000 * 60 * 60 * 24);
