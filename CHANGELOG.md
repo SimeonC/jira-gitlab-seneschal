@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.7.5](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.7.4...v2.7.5) (2020-11-10)
+
+
+### Bug Fixes
+
+* production frontend pages serve ([be72134](https://github.com/SimeonC/jira-gitlab-seneschal/commit/be72134b91c6bc3a972c6d6585c1613634a23cce))
+
 ### [2.7.4](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.7.3...v2.7.4) (2020-11-09)
 
 ### [2.7.3](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.7.2...v2.7.3) (2020-11-06)
