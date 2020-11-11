@@ -138,49 +138,62 @@ export async function processQueue(jiraAddon: *) {
           id: nextQueueItem.id
         }
       });
-      const clientKey = await getWebhookClientKey(
-        jiraAddon.schema.models,
-        nextQueueItem.key,
-        nextQueueItem.secretKey
-      );
-      const gitlabApiInstance = await gitlabApi(jiraAddon, clientKey);
+      let clientKey;
       try {
-        await processElement(
-          jiraAddon,
-          gitlabApiInstance,
-          nextQueueItem,
-          clientKey
+        clientKey = await getWebhookClientKey(
+          jiraAddon.schema.models,
+          nextQueueItem.key,
+          nextQueueItem.secretKey
         );
-      } catch (error) {
-        console.error(error);
-        let data;
-        if (error.response) {
-          try {
-            data = JSON.stringify(error.response.data);
-          } catch (error) {}
-        }
+      } catch (badClientKeySecret) {
+        console.error('Dropping unsolveable Webhook Request');
+        console.error(badClientKeySecret);
+      }
+      if (clientKey) {
         try {
-          await database.WebhookFailures.create({
-            original: nextQueueItem,
-            error: {
-              message: error.toString(),
-              details: JSON.stringify(error),
-              data
+          const gitlabApiInstance = await gitlabApi(jiraAddon, clientKey);
+          try {
+            await processElement(
+              jiraAddon,
+              gitlabApiInstance,
+              nextQueueItem,
+              clientKey
+            );
+          } catch (error) {
+            console.error(error);
+            let data;
+            if (error.response) {
+              try {
+                data = JSON.stringify(error.response.data);
+              } catch (error) {}
             }
-          });
-          const {
-            web_url,
-            name_with_namespace
-          } = await gitlabApiInstance.Projects.show(
-            nextQueueItem.body.project.id
-          );
-          await updateProject(database, nextQueueItem.body.project.id, {
-            name: name_with_namespace,
-            url: web_url,
-            status: 'sick'
-          });
-        } catch (fatalError) {
-          console.error(fatalError);
+            try {
+              await database.WebhookFailures.create({
+                original: nextQueueItem,
+                error: {
+                  message: error.toString(),
+                  details: JSON.stringify(error),
+                  data
+                }
+              });
+              const {
+                web_url,
+                name_with_namespace
+              } = await gitlabApiInstance.Projects.show(
+                nextQueueItem.body.project.id
+              );
+              await updateProject(database, nextQueueItem.body.project.id, {
+                name: name_with_namespace,
+                url: web_url,
+                status: 'sick'
+              });
+            } catch (fatalError) {
+              console.error(fatalError);
+            }
+          }
+        } catch (gitlabError) {
+          console.error(gitlabError);
+          // assume at this point the webhook is invalid or unrecoverable - continue with next one
         }
       }
 
