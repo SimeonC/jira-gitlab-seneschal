@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.7.8](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.7.7...v2.7.8) (2020-11-11)
+
+
+### Bug Fixes
+
+* **webhook-queue:** add better catch ([6cefda1](https://github.com/SimeonC/jira-gitlab-seneschal/commit/6cefda1236d824ac6b5b65f3585231ad0264d725))
+
 ### [2.7.7](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.7.6...v2.7.7) (2020-11-11)
 
 
