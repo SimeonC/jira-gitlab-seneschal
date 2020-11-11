@@ -124,66 +124,70 @@ async function processElement(
 
 export async function processQueue(jiraAddon: *) {
   queueIsProcessing = true;
-  const database = jiraAddon.schema.models;
-  let nextQueueItem = await database.WebhookQueue.findOne();
-  if (!nextQueueItem) {
-    queueIsProcessing = false;
-    return;
-  }
-
-  while (nextQueueItem) {
-    await database.WebhookQueue.destroy({
-      where: {
-        id: nextQueueItem.id
-      }
-    });
-    const clientKey = await getWebhookClientKey(
-      jiraAddon.schema.models,
-      nextQueueItem.key,
-      nextQueueItem.secretKey
-    );
-    const gitlabApiInstance = await gitlabApi(jiraAddon, clientKey);
-    try {
-      await processElement(
-        jiraAddon,
-        gitlabApiInstance,
-        nextQueueItem,
-        clientKey
-      );
-    } catch (error) {
-      console.error(error);
-      let data;
-      if (error.response) {
-        try {
-          data = JSON.stringify(error.response.data);
-        } catch (error) {}
-      }
-      try {
-        await database.WebhookFailures.create({
-          original: nextQueueItem,
-          error: {
-            message: error.toString(),
-            details: JSON.stringify(error),
-            data
-          }
-        });
-        const {
-          web_url,
-          name_with_namespace
-        } = await gitlabApiInstance.Projects.show(
-          nextQueueItem.body.project.id
-        );
-        await updateProject(database, nextQueueItem.body.project.id, {
-          name: name_with_namespace,
-          url: web_url,
-          status: 'sick'
-        });
-      } catch (fatalError) {
-        console.error(fatalError);
-      }
+  try {
+    const database = jiraAddon.schema.models;
+    let nextQueueItem = await database.WebhookQueue.findOne();
+    if (!nextQueueItem) {
+      queueIsProcessing = false;
+      return;
     }
 
-    nextQueueItem = await database.WebhookQueue.findOne();
+    while (nextQueueItem) {
+      await database.WebhookQueue.destroy({
+        where: {
+          id: nextQueueItem.id
+        }
+      });
+      const clientKey = await getWebhookClientKey(
+        jiraAddon.schema.models,
+        nextQueueItem.key,
+        nextQueueItem.secretKey
+      );
+      const gitlabApiInstance = await gitlabApi(jiraAddon, clientKey);
+      try {
+        await processElement(
+          jiraAddon,
+          gitlabApiInstance,
+          nextQueueItem,
+          clientKey
+        );
+      } catch (error) {
+        console.error(error);
+        let data;
+        if (error.response) {
+          try {
+            data = JSON.stringify(error.response.data);
+          } catch (error) {}
+        }
+        try {
+          await database.WebhookFailures.create({
+            original: nextQueueItem,
+            error: {
+              message: error.toString(),
+              details: JSON.stringify(error),
+              data
+            }
+          });
+          const {
+            web_url,
+            name_with_namespace
+          } = await gitlabApiInstance.Projects.show(
+            nextQueueItem.body.project.id
+          );
+          await updateProject(database, nextQueueItem.body.project.id, {
+            name: name_with_namespace,
+            url: web_url,
+            status: 'sick'
+          });
+        } catch (fatalError) {
+          console.error(fatalError);
+        }
+      }
+
+      nextQueueItem = await database.WebhookQueue.findOne();
+    }
+  } catch (e) {
+    console.error('error processing queue', e);
   }
 
   queueIsProcessing = false;
