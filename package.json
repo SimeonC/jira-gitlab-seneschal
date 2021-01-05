@@ -41,7 +41,7 @@
     "apollo-server-express": "2.18.1",
     "atlassian-connect-express": "5.0.0",
     "autoprefixer": "9.8.6",
-    "axios": "0.20.0",
+    "axios": "0.21.1",
     "babel-core": "6.26.3",
     "babel-eslint": "7.2.3",
     "babel-loader": "7.1.2",
