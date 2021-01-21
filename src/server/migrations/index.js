@@ -47,6 +47,7 @@ export function getMigrator(sequelize, jiraAddon) {
 
         return Bluebird.resolve();
       })
+      .then(() => addTimestampsToSchema(migrator))
       .then(() => migrator)
       .catch((e) => helpers.view.error(e));
   });

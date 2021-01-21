@@ -1,5 +1,6 @@
 import cases from 'jest-in-case';
 import linkIssues from '../linkIssues';
+import { gitlabJiraLinksHeader } from '../mergeRequest';
 
 const projectKeys = ['TC', 'NAS'];
 const baseUrl = 'http://jira.com';
@@ -218,6 +219,36 @@ cases(
       resultText: `Outside \\ Text \\\`Code Block \n ${writeLink(
         issueKeys[0]
       )} \\\``
+    },
+    {
+      name: 'should handle edge case 1',
+      projectKeys,
+      baseUrl,
+      text: `  - we need to include the \`isRequired\` value at somepoint
+
+completes [${issueKeys[0]}](https://jira.com/browse/${issueKeys[0]})
+
+`,
+      foundIssues: [issueKeys[0]],
+      resultText: `  - we need to include the \`isRequired\` value at somepoint
+
+completes [${issueKeys[0]}](https://jira.com/browse/${issueKeys[0]})
+
+`, safeText: `  - we need to include the \`isRequired\` value at somepoint
+
+completes ${issueKeys[0]}
+
+`
+    },
+    {
+      name: 'should not edit within our <detail> tags',
+      projectKeys,
+      baseUrl,
+      text: `<detail><header>Something</header>${issueKeys[0]}</detail>
+<detail>${gitlabJiraLinksHeader}${issueKeys[0]}</detail>`,
+      foundIssues: [issueKeys[0]],
+      resultText: `<detail><header>Something</header>${writeLink(issueKeys[0])}</detail>
+<detail>${gitlabJiraLinksHeader}${issueKeys[0]}</detail>`
     }
   ]
 );
