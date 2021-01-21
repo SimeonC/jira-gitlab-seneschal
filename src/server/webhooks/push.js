@@ -14,6 +14,9 @@ export async function processPush(
   queueElementId: number
 ) {
   const lastCommit = hookData.commits[hookData.commits.length - 1];
+  if (!lastCommit) {
+    return;
+  }
   const updateSequenceId =
     new Date(lastCommit.timestamp).getTime() + queueElementId;
   const devInfoCommits = await processCommitsForJiraDevInfo(
