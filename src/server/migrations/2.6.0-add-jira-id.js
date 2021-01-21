@@ -50,7 +50,7 @@ module.exports = {
     });
   },
 
-  down: async () => {
+  down: async (queryInterface) => {
     await queryInterface.removeConstraint(
       'WebhookTransitionMaps',
       'WebhookTransitionMaps_pkey'

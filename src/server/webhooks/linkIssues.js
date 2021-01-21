@@ -1,3 +1,6 @@
+// @flow
+import { gitlabJiraLinksHeaderRegexp } from './constants';
+
 function parseTextBlock(
   jiraProjectKeys: string[],
   baseUrl: string,
@@ -46,18 +49,22 @@ function parseTextBlock(
     if (openingMatch !== '[' && transformedIssues.indexOf(issueKey) === -1) {
       transformedIssues.push(issueKey);
     }
+    let newMarkdownSubstring;
+    let safeTextSubstring;
     if (
       !new RegExp(`${regexSafeBaseUrl}`, 'i').test(openingMatch) &&
       (openingMatch !== '[' || !/^\]\(http[^)]+\)$/i.test(closingMatch))
     ) {
-      newMarkdown += `${openingMatch}[${issueKey}](${baseUrl}/browse/${issueKey})${closingMatch}`;
-      safeText += `${openingMatch}${issueKey}${closingMatch}`;
+      newMarkdownSubstring = `${openingMatch}[${issueKey}](${baseUrl}/browse/${issueKey})${closingMatch}`;
+      safeTextSubstring = `${openingMatch}${issueKey}${closingMatch}`;
     } else {
-      newMarkdown += `[${issueKey}](${baseUrl}/browse/${issueKey})${
+      newMarkdownSubstring = `[${issueKey}](${baseUrl}/browse/${issueKey})${
         openingMatch === '[' ? '' : closingMatch
       }`;
-      safeText += `${issueKey}${openingMatch === '[' ? '' : closingMatch}`;
+      safeTextSubstring = `${issueKey}${openingMatch === '[' ? '' : closingMatch}`;
     }
+    newMarkdown += newMarkdownSubstring;
+    safeText += safeTextSubstring;
 
     currentMatch = matchRegex.exec(text);
   }
@@ -76,23 +83,29 @@ function parseTextBlock(
   };
 }
 
+const splitRegexDetails = `<details>[^<]*?${gitlabJiraLinksHeaderRegexp}`;
+const splitRegexBarriers = '<[^>]+>|\\\\`|```|`|\\\\[^`]|[^`\\\\<]+';
+
 export function parseMarkdown(
   jiraProjectKeys: String[],
   baseUrl: string,
   inputText: string
 ): { text: string, markdown?: string, issues?: string[] }[] {
-  const splitRegex = /\\`|```|`|\\[^`]|[^`\\]+/gi;
-  if (!/`/gi.test(inputText)) {
+  const splitRegex = new RegExp(`${splitRegexDetails}|${splitRegexBarriers}`, 'gi');
+  if (!/[`<]/gi.test(inputText)) {
     return [parseTextBlock(jiraProjectKeys, baseUrl, inputText)];
   }
   let match = splitRegex.exec(inputText);
   const result = [];
+  let isDetails = false;
   let isCode = false;
   let isCodeBlock = false;
   let lastIndex = 0;
   while (match) {
     const substring = inputText.substring(lastIndex, match.index);
-    result.push({ text: substring, markdown: substring });
+    if (substring) {
+      result.push({ text: substring, markdown: substring });
+    }
     let text = match[0];
     let markdown;
     let issues;
@@ -106,14 +119,25 @@ export function parseMarkdown(
     } else if (match[0] === '```' || match[0] === '`') {
       isCode = true;
       isCodeBlock = match[0] === '```';
+    } else if (isDetails) {
+      if (match[0] === '</details>') {
+        isDetails = false;
+      }
+    } else if (match[0].match(/^<details>/)) {
+      // can do simple check for this as the rest of the check is in the regex
+      isDetails = true;
+    } else if (match[0].match(/^<[^>]+>$/)) {
+      // non details tag match - don't parse
     } else if (match[0] !== '\\') {
       const parsedResult = parseTextBlock(jiraProjectKeys, baseUrl, match[0]);
       issues = parsedResult.issues;
       markdown = parsedResult.markdown || match[0];
       text = parsedResult.text;
     }
-    result.push({ text, isCode, isCodeBlock, markdown, issues });
-    lastIndex = match.index + text.length;
+    if (text || markdown) {
+      result.push({ text, isCode, isCodeBlock, markdown, issues });
+    }
+    lastIndex = match.index + match[0].length;
     match = splitRegex.exec(inputText);
   }
   const substring = inputText.substring(lastIndex);

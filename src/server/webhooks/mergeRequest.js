@@ -9,6 +9,7 @@ import sendDevInfo from './sendDevInfo';
 import { getWebhookSettings } from './settings';
 import { processCommitsForJiraDevInfo, processCommits } from './commits';
 import { parseMarkdown } from './linkIssues';
+import { gitlabJiraLinksHeader, gitlabJiraLinksHeaderRegexp } from './constants';
 
 export const jiraIssueGlancePropertyKey =
   'com.atlassian.jira.issue:gitlab-seneschal-link:gitlab-seneshal-merge-requests-glance:status';
@@ -53,12 +54,6 @@ async function updateMergeRequestIssueProperty(jiraApi, issueKey, meta) {
     console.error('set property error', error);
   }
 }
-
-const gitlabJiraLinksHeader = '<summary>All Jira Seneschal Links</summary>';
-const gitlabJiraLinksHeaderRegexp = gitlabJiraLinksHeader.replace(
-  /\//gi,
-  '\\/'
-);
 
 // This should be replaced once https://gitlab.com/gitlab-org/gitlab-ce/issues/48508 is done
 /*

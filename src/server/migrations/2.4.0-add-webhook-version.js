@@ -8,7 +8,7 @@ module.exports = {
     `);
   },
 
-  down: (queryInterface) => {
-    return queryInterface.removeColumn('WebhookStatuses', 'version');
+  down: async (queryInterface) => {
+    await queryInterface.removeColumn('WebhookStatuses', 'version');
   }
 };

@@ -49,6 +49,7 @@ describe('processWebhookMergeRequest', () => {
   let jiraProjectIds;
   let response;
   let gitlabApi;
+  let commits;
 
   beforeEach(() => {
     mockSettingsRequest = jest.fn(() => Promise.resolve({}));
@@ -91,6 +92,12 @@ describe('processWebhookMergeRequest', () => {
     response = {
       action: 'open'
     };
+    commits = [
+      {
+        title: 'commit title',
+        message: `${transitionKeyword} ${issueKey}`
+      }
+    ];
     gitlabApi = {
       MergeRequests: {
         show: () =>
@@ -104,12 +111,7 @@ describe('processWebhookMergeRequest', () => {
             references: {}
           }),
         commits: () =>
-          Promise.resolve([
-            {
-              title: 'commit title',
-              message: `${transitionKeyword} ${issueKey}`
-            }
-          ]),
+          Promise.resolve(commits),
         edit: () => Promise.resolve({}),
         approvalState: () => Promise.resolve({})
       },
@@ -162,13 +164,49 @@ describe('processWebhookMergeRequest', () => {
     );
   });
 
-  test('should not update for no changes', async () => {
+  test.each([
+    `Adding support for the “phone” type field with correct validation and formatting.
+
+Completes [TC-12](http://jira.com/browse/TC-12)
+
+<details>
+  <summary>All Jira Seneschal Links</summary>
+  
+  | Ticket | Title |
+  | --- | --- |
+  | [TC-12](http://jira.com/browse/TC-12) | Summary for TC-12 |
+</details>
+
+`,
+    `### big test
+\`\`\`
+Object {
+  fields {
+    something: []
+  }
+}
+\`\`\`
+- First note about \`questions\` property
+- no dynamic validations
+  - we need to include the \`isRequired\` value at somepoint
+
+completes [TC-12](https://jira.com/browse/TC-12)
+
+<details>
+  <summary>All Jira Seneschal Links</summary>
+  
+  | Ticket | Title |
+  | --- | --- |
+  | [TC-12](http://jira.com/browse/TC-12) | Summary for TC-12 |
+</details>`
+  ])('should not update for no changes', async (description) => {
+    jiraProjectKey = 'TC';
+    issueKey = `${jiraProjectKey}-12`
     const metadata = {
       transitionKeywords: [transitionKeyword],
       transitionMap: [],
       defaultTransitionMap: []
     };
-    const description = `Adding support for the “phone” type field with correct validation and formatting.\n\nCompletes [${issueKey}](http://jira.com/browse/${issueKey})\n\n<details>\n  <summary>All Jira Seneschal Links</summary>\n  \n  | Ticket | Title |\n  | --- | --- |\n  | [${issueKey}](http://jira.com/browse/${issueKey}) | Summary for TC-12 |\n</details>\n\n`;
     gitlabApi.MergeRequests.show = () =>
       Promise.resolve({
         id: 'testid',

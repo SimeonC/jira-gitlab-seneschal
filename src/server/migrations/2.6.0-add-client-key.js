@@ -7,7 +7,7 @@ module.exports = {
     `);
   },
 
-  down: async () => {
+  down: async (queryInterface) => {
     await queryInterface.sequelize.query(`
       ALTER TABLE "MigrationQueues" DROP COLUMN "clientKey";
     `);
