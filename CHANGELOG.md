@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.7.12](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.7.11...v2.7.12) (2021-01-22)
+
+
+### Bug Fixes
+
+* merge request error from gitbeaker upgrade ([4ae1295](https://github.com/SimeonC/jira-gitlab-seneschal/commit/4ae1295ba1c0267d6af52f2171b00a25c45c5926))
+
 ### [2.7.11](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.7.10...v2.7.11) (2021-01-22)
 
 
