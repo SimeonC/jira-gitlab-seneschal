@@ -60,7 +60,7 @@ export async function processPush(
         true
       );
       return {
-        id: `${type}_${name}`,
+        id: `${type}_${name.replace(/[^~.\-_A-Za-z0-9]/ig, '_')}`,
         name,
         issueKeys,
         updateSequenceId,
