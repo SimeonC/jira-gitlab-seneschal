@@ -47,7 +47,6 @@ export function getMigrator(sequelize, jiraAddon) {
 
         return Bluebird.resolve();
       })
-      .then(() => addTimestampsToSchema(migrator))
       .then(() => migrator)
       .catch((e) => helpers.view.error(e));
   });
@@ -77,57 +76,5 @@ function ensureMetaTable(queryInterface, tableName) {
       throw new Error('No MetaTable table found.');
     }
     return queryInterface.describeTable(tableName);
-  });
-}
-
-/**
- * Add timestamps
- *
- * @return {Promise}
- */
-export function addTimestampsToSchema(migrator) {
-  const sequelize = migrator.options.storageOptions.sequelize;
-  const queryInterface = sequelize.getQueryInterface();
-  const tableName = migrator.options.storageOptions.tableName;
-
-  return ensureMetaTable(queryInterface, tableName).then((table) => {
-    if (table.createdAt) {
-      return;
-    }
-
-    return ensureCurrentMetaSchema(migrator)
-      .then(() => queryInterface.renameTable(tableName, tableName + 'Backup'))
-      .then(() => {
-        const sql = queryInterface.QueryGenerator.selectQuery(
-          tableName + 'Backup'
-        );
-        return helpers.generic.execQuery(sequelize, sql, {
-          type: 'SELECT',
-          raw: true
-        });
-      })
-      .then((result) => {
-        const SequelizeMeta = sequelize.define(
-          tableName,
-          {
-            name: {
-              type: Sequelize.STRING,
-              allowNull: false,
-              unique: true,
-              primaryKey: true,
-              autoIncrement: false
-            }
-          },
-          {
-            tableName,
-            timestamps: true,
-            schema: helpers.umzug.getSchema()
-          }
-        );
-
-        return SequelizeMeta.sync().then(() => {
-          return SequelizeMeta.bulkCreate(result);
-        });
-      });
   });
 }
