@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.7.10](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.7.9...v2.7.10) (2021-01-22)
+
+
+### Bug Fixes
+
+* migrations startup ([edcd89f](https://github.com/SimeonC/jira-gitlab-seneschal/commit/edcd89f0d538d1bbb02f9bf05abe2b5f63bad6d2))
+
 ### [2.7.9](https://github.com/SimeonC/jira-gitlab-seneschal/compare/v2.7.8...v2.7.9) (2021-01-21)
 
 
