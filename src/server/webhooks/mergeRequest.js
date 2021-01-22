@@ -330,7 +330,7 @@ export default async function processWebhookMergeRequest(
     locked: 'UNKNOWN'
   };
   const author = await gitlabApi.Users.show(mrData.author.id);
-  const approvalState = await gitlabApi.MergeRequests.approvalState(
+  const approvalState = await gitlabApi.MergeRequestApprovals.approvalState(
     response.projectId,
     response.mergeRequestId
   );
