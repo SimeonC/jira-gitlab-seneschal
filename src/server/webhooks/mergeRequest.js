@@ -227,7 +227,7 @@ export default async function processWebhookMergeRequest(
   };
 
   if (action === 'merge') {
-    const approvals = await gitlabApi.MergeRequests.approvals(
+    const approvals = await gitlabApi.MergeRequestApprovals.approvals(
       response.projectId,
       { mergeRequestId: response.mergeRequestId }
     );
@@ -320,6 +320,13 @@ export default async function processWebhookMergeRequest(
     }
   });
 
+  const issueKeys = uniq(
+    textIssues.concat(commitIssues.map(({ issueKey }) => issueKey))
+  );
+
+  // if there are no issues, dev info will error
+  if (!issueKeys.length) return;
+
   // This timestamp doesn't include seconds / milliseconds
   const updateSequenceId =
     new Date(hookData.object_attributes.updated_at).getTime() + queueElementId;
@@ -351,10 +358,8 @@ export default async function processWebhookMergeRequest(
     branches: [],
     pullRequests: [
       {
-        id: `${id}`,
-        issueKeys: uniq(
-          textIssues.concat(commitIssues.map(({ issueKey }) => issueKey))
-        ),
+        id: `mr-${id}`,
+        issueKeys,
         updateSequenceId,
         status: prStatusMap[state],
         title,
