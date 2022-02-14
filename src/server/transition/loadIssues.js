@@ -8,6 +8,12 @@ import GitlabApi from '../apis/gitlab';
 import initModels, { type DatabaseType } from '../models';
 import type { ProcessingProjectType } from './types';
 
+import JSON5 from 'json5';
+import fs from 'fs';
+
+const configContent = fs.readFileSync('config.json').toString();
+const config = JSON5.parse(configContent)[process.env.NODE_ENV];
+
 type InitMessageType = {
   init: boolean,
   url: string
@@ -140,9 +146,11 @@ async function loadGitlabProjectIssues(projectId: string, clientKey: string) {
   });
   const gitlabApi = await GitlabApi(
     {
-      schema: database,
+      schema: {
+        models: database
+      },
       config: {
-        CREDENTIAL_ENCRYPTION_KEY: () => process.env.CREDENTIAL_ENCRYPTION_KEY
+        CREDENTIAL_ENCRYPTION_KEY: () => config.CREDENTIAL_ENCRYPTION_KEY
       }
     },
     clientKey

@@ -175,7 +175,7 @@ class MappingEditor extends Component<{
                   getOptionValue={getDefaultOptionValue}
                   getOptionLabel={getComponentOptionLabel}
                   onChange={this.selectDefaultComponents}
-                  defaultValue={(data.defaultComponentIds || []).map((id) =>
+                  defaultValue={(data && data.defaultComponentIds || []).map((id) =>
                     idFind(id, jiraData.jiraComponents)
                   )}
                 />

@@ -234,7 +234,7 @@ export default class Migrations extends Component {
                       cells: [
                         {
                           key: 'name',
-                          content: project.meta.nameWithNamespace
+                          content: project.meta && project.meta.nameWithNamespace
                         },
                         {
                           key: 'progress',

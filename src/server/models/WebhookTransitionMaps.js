@@ -3,7 +3,7 @@ import { DataTypes } from 'sequelize';
 export default [
   {
     jiraProjectId: {
-      type: DataTypes.NUMBER,
+      type: DataTypes.INTEGER,
       allowNull: false,
       primaryKey: true
     },
