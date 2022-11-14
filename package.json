@@ -78,7 +78,7 @@
     "fs-extra": "9.0.1",
     "graphql": "15.3.0",
     "helmet": "4.1.1",
-    "html-webpack-plugin": "2.29.0",
+    "html-webpack-plugin": "5.5.0",
     "lodash": "4.17.20",
     "map-keys-deep-lodash": "1.2.3",
     "morgan": "1.10.0",
