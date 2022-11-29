@@ -236,7 +236,7 @@ export default async function createJiraIssue(
       },
       relationship: 'Original Gitlab Issue',
       object: {
-        url: issue.web_url,
+        url: issue.webUrl,
         title: 'Original GitLab Issue',
         icon: {
           url16x16: 'https://gitlab.kkvesper.net/favicon.ico',
