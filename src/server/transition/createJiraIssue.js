@@ -11,6 +11,7 @@ import type {
   TransitionMappingStatusType,
   TransitionMappingType
 } from './types';
+import { initJiraApi } from './migrationQueue';
 import { jiraRequest } from '../apis/jira';
 import type { DatabaseType } from '../models';
 
