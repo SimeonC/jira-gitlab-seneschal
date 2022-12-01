@@ -175,7 +175,7 @@ export async function clearProject(addon: *, projectId: string) {
   );
 }
 
-async function initJiraApi(
+export async function initJiraApi(
   addon: *,
   gitlabProjectId: string
 ): { api: *, baseUrl: string } {

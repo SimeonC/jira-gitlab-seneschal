@@ -110,7 +110,9 @@ async function processIssue(project: ProcessingProjectType) {
   }
   const issueUsers = issue.assignees || [];
   issueUsers.push(issue.author);
-  issueUsers.push(issue.assignee);
+  if (issue.assignee) {
+    issueUsers.push(issue.assignee);
+  }
   issueUsers.forEach(async (user) => {
     await database.MigrationUsers.upsert({
       ...mapKeys(user, (value, key) => camelCase(key)),

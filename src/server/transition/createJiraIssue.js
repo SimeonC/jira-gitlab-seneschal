@@ -11,6 +11,7 @@ import type {
   TransitionMappingStatusType,
   TransitionMappingType
 } from './types';
+import { initJiraApi } from './migrationQueue';
 import { jiraRequest } from '../apis/jira';
 import type { DatabaseType } from '../models';
 
@@ -235,7 +236,7 @@ export default async function createJiraIssue(
       },
       relationship: 'Original Gitlab Issue',
       object: {
-        url: issue.web_url,
+        url: issue.webUrl,
         title: 'Original GitLab Issue',
         icon: {
           url16x16: 'https://gitlab.kkvesper.net/favicon.ico',
