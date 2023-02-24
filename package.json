@@ -100,7 +100,7 @@
     "react-router-dom": "5.2.0",
     "resolve": "1.17.0",
     "semver": "7.3.2",
-    "sequelize": "5.22.3",
+    "sequelize": "6.29.0",
     "sequelize-cli": "5.5.1",
     "standard-version": "9.0.0",
     "static-expiry": "0.0.11",
